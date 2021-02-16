@@ -1,0 +1,24 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "base",
+    hdrs = [
+        "call_on_return.h",
+        "free_list.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/synchronization",
+    ],
+)
+
+cc_test(
+    name = "free_list_test",
+    srcs = ["free_list_test.cc"],
+    deps = [
+        ":base",
+        "@com_google_googletest//:gtest_main",
+    ]
+)

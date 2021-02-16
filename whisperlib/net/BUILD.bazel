@@ -1,0 +1,40 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "net",
+    srcs = [
+        "address.cc",
+        "selectable.cc",
+        "selector.cc",
+        "selector_loop.cc",
+    ],
+    hdrs = [
+        "address.h",
+        "selectable.h",
+        "selector_event_data.h",
+        "selector.h",
+        "selector_loop.h"
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//whisperlib/base",
+        "//whisperlib/io",
+        "//whisperlib/io:errno",
+        "//whisperlib/status",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/time",
+    ],
+)
+
+cc_test(
+    name = "address_test",
+    srcs = ["address_test.cc"],
+    deps = [
+        ":net",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

@@ -1,0 +1,35 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "status",
+    srcs = ["status.cc"],
+    hdrs = ["status.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_github_google_glog//:glog",
+    ]
+)
+
+cc_library(
+    name = "testing",
+    hdrs = ["testing.h"],
+    visibility = ["//visibility:public"],
+    testonly = 1,
+    deps = [
+        "@com_google_absl//absl/status",
+        "@com_google_googletest//:gtest",
+    ]
+)
+
+cc_test(
+    name = "status_test",
+    srcs = ["status_test.cc"],
+    deps = [
+        ":status",
+        ":testing",
+        "@com_google_googletest//:gtest_main",
+    ]
+)

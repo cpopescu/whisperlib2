@@ -1,0 +1,75 @@
+load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+
+cc_library(
+    name = "path",
+    srcs = ["path.cc"],
+    hdrs = ["path.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "errno",
+    srcs = ["errno.cc"],
+    hdrs = ["errno.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//whisperlib/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/status",
+    ]
+)
+
+cc_library(
+    name = "io",
+    srcs = [
+        "cord_io.cc",
+        "file.cc",
+        "filesystem.cc",
+    ],
+    hdrs = [
+        "cord_io.h",
+        "file.h",
+        "filesystem.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":path",
+        ":errno",
+        "//whisperlib/base",
+        "//whisperlib/status",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+    ],
+)
+
+cc_test(
+    name = "path_test",
+    size = "small",
+    srcs = ["path_test.cc"],
+    deps = [
+        ":path",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "filesystem_test",
+    size = "small",
+    srcs = ["filesystem_test.cc"],
+    deps = [
+        ":io",
+        ":path",
+        "//whisperlib/status:testing",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/time",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
