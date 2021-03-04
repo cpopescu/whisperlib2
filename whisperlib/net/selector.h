@@ -4,6 +4,7 @@
 #include <atomic>
 #include <deque>
 #include <functional>
+#include <thread>
 #include <vector>
 
 #include "absl/base/thread_annotations.h"
@@ -20,6 +21,23 @@
 namespace whisper {
 namespace net {
 
+// A Selector is an object that performs asynchronous I/O operations on a
+// set of file descriptors, abstracted as `Selectable` objects.
+// Its execution happens mostly as a closed loop in a single thread.
+// All I/O operations happen on that particular thread, as indicated by the
+// desires of the Selectable objects.
+// It can also schedule functions to be run at certain times (alarms) or
+// general functions to be run on the selector thread.
+//
+// Note: most of the functions that deal with registration and changes of
+// selectable objects need to be executed from the selector loop.
+// Functions that register alarms, or functions to be run in the selector
+// loop, can be executed from any thread, so adding a selectable from
+// a different thread can be done as:
+//   selector->RunInSelectLoop([selector, selectable]() {
+//       HandleError(selector->Register(selectable), selectable);;
+//   });
+//
 class Selector {
 public:
   struct Params {
@@ -64,11 +82,26 @@ public:
   // Creation method - use to create a selector object.
   static absl::StatusOr<std::unique_ptr<Selector>> Create(Params params);
 
+  // Sets the function to be called upon exiting the loop - set before starting
+  // the loop.
+  void set_call_on_close(std::function<void()> call_on_close);
+
+  // Runs the main select loop - blocks the thread until the loop ends.
+  absl::Status Loop();
+
+  // Returns true if this call was made from the select server thread.
+  bool IsInSelectThread() const;
+
+  // Schedules the exit from the select loop.
+  void MakeLoopExit();
+
   // Register an I/O object for read/write/error event callbacks.
   // By default all callbacks are enabled.
+  // NOTE: Call only for from the Selector loop thread.
   absl::Status Register(Selectable* s);
 
   // Unregister a previously registered I/O object.
+  // NOTE: Call only from the Selector loop thread.
   absl::Status Unregister(Selectable* s);
 
   // Enable/disable a certain event callback for the given selectable
@@ -76,23 +109,17 @@ public:
   absl::Status EnableWriteCallback(Selectable* s, bool enable);
   absl::Status EnableReadCallback(Selectable* s, bool enable);
 
-  // Sets the function to be called upon exiting the loop.
-  void set_call_on_close(std::function<void()> call_on_close);
-
-  // Runs the main select loop - blocks the thread until the loop ends.
-  absl::Status Loop();
-  // Schedules the exit from the select loop.
-  void MakeLoopExit();
+  // Cleans and closes the entire list of selectable objects.
+  // Note: Call only from the Selector loop thread.
+  // Error status is returned only if not called from the selector thread.
+  absl::Status CleanAndCloseAll();
 
   // Returns true if the selector is no longer in the loop.
   // Note: in this state the registered callbacks can still execute.
   bool IsExiting() const;
 
-  // Returns true if this call was made from the select server thread.
-  bool IsInSelectThread() const;
-
   // Runs this function in the select loop.
-  // NOTE: safe to call from another thread.
+  // NOTE: safe to call from any thread.
   void RunInSelectLoop(std::function<void()> callback);
   // Schedules the deletion of the provided object in the select loop.
   template <typename T> void DeleteInSelectLoop(T* t) {
@@ -104,14 +131,15 @@ public:
     RunInSelectLoop([t]() { delete t; });
   }
 
+  using AlarmId = uint64_t;
   // Runs the provided function after a timeout in the select loop.
   // Returns an alarm_id that can be used to unregister the alarm.
-  // NOTE: unsafe to call from another thread - call only from the select loop.
-  uint64_t RegisterAlarm(std::function<void()> callback,
-                         absl::Duration timeout);
+  // NOTE: safe to call from any thread.
+  AlarmId RegisterAlarm(std::function<void()> callback,
+                        absl::Duration timeout);
   // Unregistered a previously registered alarm.
-  // NOTE: unsafe to call from another thread - call only from the select loop.
-  void UnregisterAlarm(uint64_t alarm_id);
+  // NOTE: safe to call from any thread.
+  void UnregisterAlarm(AlarmId alarm_id);
 
   // Parameters of this selector.
   Params params() const;
@@ -122,8 +150,13 @@ public:
   // The current moment when the select loop was broken:
   absl::Time loop_now() const;
 
-  // Cleans and closes the entire list of selectable objects
-  void CleanAndCloseAll();
+  // Identifies various signals in the provided event value, based
+  // on the underlying loop_ implementation.
+  bool IsHangUpEvent(int event_value) const;
+  bool IsRemoteHangUpEvent(int event_value) const;
+  bool IsAnyHangUpEvent(int event_value) const;
+  bool IsErrorEvent(int event_value) const;
+  bool IsInputEvent(int event_value) const;
 
   ~Selector();
 
@@ -181,10 +214,10 @@ private:
   // Id of the next added alarm.
   std::atomic_uint64_t alarm_id_ = ATOMIC_VAR_INIT(0);
   // Maps from alarm id to alarm callback.
-  absl::flat_hash_map<uint64_t, std::function<void()>> alarms_
+  absl::flat_hash_map<AlarmId, std::function<void()>> alarms_
   ABSL_GUARDED_BY(alarm_mutex_);
   // Heap of alarm times and alarm ids.
-  std::vector<std::pair<absl::Time, uint64_t>> alarm_timeouts_
+  std::vector<std::pair<absl::Time, AlarmId>> alarm_timeouts_
   ABSL_GUARDED_BY(alarm_mutex_);
   // The next alarm time - top of the alarm_timeouts_ heap.
   // This is the nanos of the time - cannot use atomic<absl::Time> on all
@@ -198,6 +231,51 @@ private:
   // The last time we broke the loop.
   std::atomic<int64_t> now_ =
     ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
+};
+
+class SelectorThread {
+public:
+  // Creates a *stopped* selector thread.
+  static absl::StatusOr<std::unique_ptr<SelectorThread>>
+  Create(Selector::Params params = {});
+
+  // Starts the selector in the side thread.
+  // Returns true if started now, false if it is already started.
+  bool Start();
+  // Ends the selector thread via a MakeLoopExit, then waiting for thread
+  // to end.
+  // Returns true if stopped now, false if it is already stopped.
+  bool Stop();
+
+  // Close all file handles in the selector, effectively preparing for a clean
+  // exit of the selector thread.
+  void CleanAndCloseAll();
+
+  // Returns the underlying selector.
+  const Selector* selector() const;
+  Selector* selector();
+  // Returns if the selector thread is started and running.
+  bool is_started() const;
+  // Returns the last status of the underlying selector loop.
+  absl::Status selector_status() const;
+
+  ~SelectorThread();
+
+ private:
+  SelectorThread();
+  absl::Status Initialize(Selector::Params params);
+  void Run();
+
+  // Underlying selector, created from provided creation params.
+  std::unique_ptr<Selector> selector_;
+  // Locks access to internal members.
+  mutable absl::Mutex mutex_;
+  // Running thread for the selector loop.
+  std::unique_ptr<std::thread> thread_ ABSL_GUARDED_BY(mutex_);
+  // Status of the last selector loop.
+  absl::Status selector_status_ ABSL_GUARDED_BY(mutex_);
+  // If the selector loop is currently running.
+  std::atomic_bool is_started_ = ATOMIC_VAR_INIT(false);
 };
 
 }  // namespace net

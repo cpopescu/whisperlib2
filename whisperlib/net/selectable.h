@@ -53,6 +53,8 @@ class Selectable {
   virtual void Close() = 0;
 
  protected:
+  static constexpr int kInvalidFdValue = (-1);
+
   // Writes the provided buffer to the associated file descriptor.
   // Returns the size actually written to the file descriptor.
   absl::StatusOr<size_t> Write(const char* buffer, size_t size);
@@ -73,7 +75,6 @@ class Selectable {
   absl::StatusOr<size_t> WriteCordVec(const absl::Cord& cord,
                                       absl::optional<size_t> len = {});
 
- private:
   Selector* selector_ = nullptr;
   // the desire for read or write **DO NOT TOUCH** updated by the selector only
   uint32_t desire_ = SelectDesire::kWantRead | SelectDesire::kWantError;

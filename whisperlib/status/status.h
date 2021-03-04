@@ -4,6 +4,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
@@ -47,6 +48,14 @@ StatusWriter& StatusWriter::operator<<(const LogToError& req) {
   LOG(ERROR) << absl::Status(*this);
   return *this;
 }
+
+template <typename T>
+ABSL_MUST_USE_RESULT T DieIfNull(const char* file, int line,
+                                 const char* exprtext, T&& t) {
+  CHECK(t != nullptr) << exprtext;
+  return std::forward<T>(t);
+}
+
 }  // namespace status
 }  // namespace whisper
 
@@ -59,9 +68,18 @@ absl::Status status_name = (expr);                              \
 if (ABSL_PREDICT_FALSE(!status_name.ok()))                      \
   return ::whisper::status::StatusWriter(std::move(status_name))
 
+#define LOG_IF_ERROR_IMPL(status_name, log_level, expr)         \
+absl::Status status_name = (expr);                              \
+if (ABSL_PREDICT_FALSE(!status_name.ok()))                      \
+  LOG(log_level) << status_name
+
 #define RETURN_IF_ERROR(expr)                                           \
 RETURN_IF_ERROR_IMPL(                                                   \
     STATUS_MACROS_CONCAT_NAME(_return_if_error, __COUNTER__), (expr))
+
+#define LOG_IF_ERROR(log_level, expr)                                 \
+LOG_IF_ERROR_IMPL(                                                    \
+    STATUS_MACROS_CONCAT_NAME(_log_if_error, __COUNTER__), log_level, (expr))
 
 
 #define ASSIGN_OR_RETURN_IMPL(status_name, lhs, rexpr, ...)             \
@@ -93,6 +111,11 @@ if (ABSL_PREDICT_FALSE(!status_name.ok()))                      \
 
 #define CHECK_OK(expr)                                          \
 CHECK_OK_IMPL(STATUS_MACROS_CONCAT_NAME(_check_ok, __COUNTER__), (expr))
+
+#ifndef ABSL_DIE_IF_NULL
+#define ABSL_DIE_IF_NULL(val) \
+  ::whisper::status::DieIfNull(__FILE__, __LINE__, #val, (val))
+#endif
 
 namespace whisper {
 namespace status {

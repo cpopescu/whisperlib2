@@ -4,16 +4,24 @@ cc_library(
     name = "net",
     srcs = [
         "address.cc",
+        "connection.cc",
+        "dns_resolve.cc",
         "selectable.cc",
         "selector.cc",
         "selector_loop.cc",
+        "ssl_connection.cc",
+        "timeouter.cc",
     ],
     hdrs = [
         "address.h",
+        "connection.h",
+        "dns_resolve.h",
         "selectable.h",
         "selector_event_data.h",
         "selector.h",
-        "selector_loop.h"
+        "selector_loop.h",
+        "ssl_connection.h",
+        "timeouter.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
@@ -21,13 +29,20 @@ cc_library(
         "//whisperlib/io",
         "//whisperlib/io:errno",
         "//whisperlib/status",
+        "//whisperlib/sync",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:bind_front",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
+        "@icu//:headers",
+        "@openssl//:openssl",
     ],
+    linkopts = ["-ldl"],
 )
 
 cc_test(
@@ -35,6 +50,18 @@ cc_test(
     srcs = ["address_test.cc"],
     deps = [
         ":net",
+        "//whisperlib/status:testing",
+        "@com_google_googletest//:gtest_main",
+    ],
+)
+
+cc_test(
+    name = "dns_resolve_test",
+    srcs = ["dns_resolve_test.cc"],
+    deps = [
+        ":net",
+        "//whisperlib/status:testing",
+        "@com_google_absl//absl/functional:bind_front",
         "@com_google_googletest//:gtest_main",
     ],
 )

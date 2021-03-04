@@ -43,6 +43,13 @@ public:
   //  -- the event that happended (an or of Selector desires)
   virtual absl::StatusOr<std::vector<SelectorEventData>>
   LoopStep(absl::Duration timeout) = 0;
+
+  // Abstracts away identification of signals received through (poll) events:
+  virtual bool IsHangUpEvent(int event_value) const = 0;
+  virtual bool IsRemoteHangUpEvent(int event_value) const = 0;
+  virtual bool IsAnyHangUpEvent(int event_value) const = 0;
+  virtual bool IsErrorEvent(int event_value) const = 0;
+  virtual bool IsInputEvent(int event_value) const = 0;
 };
 
 #ifdef HAVE_EPOLL
@@ -56,8 +63,15 @@ public:
   absl::Status Add(int fd, void* user_data, uint32_t desires) override;
   absl::Status Update(int fd, void* user_data, uint32_t desires) override;
   absl::Status Delete(int fd) override;
+
   absl::StatusOr<std::vector<SelectorEventData>> LoopStep(
       absl::Duration timeout) override;
+
+  bool IsHangUpEvent(int event_value) const override;
+  bool IsRemoteHangUpEvent(int event_value) const override;
+  bool IsAnyHangUpEvent(int event_value) const override;
+  bool IsErrorEvent(int event_value) const override;
+  bool IsInputEvent(int event_value) const override;
 
 private:
   EpollSelectorLoop(int signal_fd, int max_events_per_step);
@@ -90,6 +104,12 @@ public:
 
   absl::StatusOr<std::vector<SelectorEventData>> LoopStep(
       absl::Duration timeout) override;
+
+  bool IsHangUpEvent(int event_value) const override;
+  bool IsRemoteHangUpEvent(int event_value) const override;
+  bool IsAnyHangUpEvent(int event_value) const override;
+  bool IsErrorEvent(int event_value) const override;
+  bool IsInputEvent(int event_value) const override;
 
 private:
   PollSelectorLoop(int signal_fd, int max_events_per_step);

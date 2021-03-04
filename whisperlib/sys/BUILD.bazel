@@ -13,7 +13,20 @@ cc_library(
         "//whisperlib/io:errno",
         "//whisperlib/status",
         "@com_github_google_glog//:glog",
+        "@com_google_absl//absl/debugging:stacktrace",
+        "@com_google_absl//absl/debugging:symbolize",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/time",
     ]
+)
+
+cc_test(
+    name = "signal_handlers_test",
+    srcs = ["signal_handlers_test.cc"],
+    deps = [
+        ":sys",
+        "//whisperlib/status",
+        "@com_google_googletest//:gtest",
+    ],
 )

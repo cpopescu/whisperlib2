@@ -1,3 +1,8 @@
 
-sudo apt-get install -y icu-devtools libicu-dev
-sudo apt-get install -y google-perftools libgoogle-perftools-dev
+
+## New and updated whisperlib.
+
+### Note: not yet ready - under development.
+
+In the meantime check the old version:  https://github.com/cpopescu/whisperlib
+

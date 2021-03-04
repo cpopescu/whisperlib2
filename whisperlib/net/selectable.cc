@@ -11,6 +11,10 @@
 namespace whisper {
 namespace net {
 
+Selectable::Selectable(Selector* selector)
+  : selector_(selector) {
+}
+
 const Selector* Selectable::selector() const {
   return selector_;
 }
@@ -23,8 +27,7 @@ void Selectable::set_selector(Selector* value) {
 }
 
 absl::StatusOr<size_t> Selectable::Write(const char* buffer, size_t size) {
-  const int fd = GetFd();
-  const ssize_t cb = ::write(fd, buffer, size);
+  const ssize_t cb = ::write(GetFd(), buffer, size);
   if (cb >= 0) {
     return cb;
   }
@@ -33,12 +36,11 @@ absl::StatusOr<size_t> Selectable::Write(const char* buffer, size_t size) {
     return 0;
   }
   return error::ErrnoToStatus(write_error)
-    << "Writing data to file descriptor: " << fd << " size: " << size;
+    << "Writing data to file descriptor: " << GetFd() << " size: " << size;
 }
 
 absl::StatusOr<size_t> Selectable::Read(char* buffer, size_t size) {
-  const int fd = GetFd();
-  const ssize_t cb = ::read(fd, buffer, size);
+  const ssize_t cb = ::read(GetFd(), buffer, size);
   if (cb >= 0) {
     return cb;
   }
@@ -47,7 +49,7 @@ absl::StatusOr<size_t> Selectable::Read(char* buffer, size_t size) {
     return 0;
   }
   return error::ErrnoToStatus(read_error)
-    << "Reading data to file descriptor: " << fd << " size: " << size;
+    << "Reading data to file descriptor: " << GetFd() << " size: " << size;
 }
 
 absl::StatusOr<size_t> Selectable::ReadToCord(absl::Cord* cord, size_t len) {
@@ -62,6 +64,7 @@ absl::StatusOr<size_t> Selectable::ReadToCord(absl::Cord* cord, size_t len) {
 
 absl::StatusOr<size_t> Selectable::WriteCord(const absl::Cord& cord,
                                              absl::optional<size_t> size) {
+  if (cord.empty()) { return 0; }
   const size_t size_to_write = io::CordIo::SizeToWrite(cord, size);
   size_t cb = 0;
   for (absl::string_view chunk : cord.Chunks()) {
@@ -80,11 +83,11 @@ absl::StatusOr<size_t> Selectable::WriteCord(const absl::Cord& cord,
 
 absl::StatusOr<size_t> Selectable::WriteCordVec(
     const absl::Cord& cord, absl::optional<size_t> size) {
+  if (cord.empty()) { return 0; }
   const size_t size_to_write = io::CordIo::SizeToWrite(cord, size);
   auto io_vec_pair = io::CordIo::ToIovec(cord, size_to_write);
-  const int fd = GetFd();
   const ssize_t cb = ::writev(
-      fd, &io_vec_pair.first[0], io_vec_pair.second);
+      GetFd(), &io_vec_pair.first[0], io_vec_pair.second);
 
   if (ABSL_PREDICT_FALSE(cb < 0)) {
     const int write_error = error::Errno();
@@ -92,7 +95,7 @@ absl::StatusOr<size_t> Selectable::WriteCordVec(
       return 0;
     }
     return error::ErrnoToStatus(error::Errno())
-      << "Writing data to file descriptor with writeev: " << fd
+      << "Writing data to file descriptor with writeev: " << GetFd()
       << " size: " << size_to_write;
   }
   return cb;

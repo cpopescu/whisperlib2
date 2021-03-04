@@ -26,8 +26,8 @@ absl::Status SetupNonBlocking(int fd) {
   }
   return absl::OkStatus();
 }
-bool CompareAlarms(const std::pair<absl::Time, uint64_t>& a,
-                   const std::pair<absl::Time, uint64_t>& b) {
+bool CompareAlarms(const std::pair<absl::Time, Selector::AlarmId>& a,
+                   const std::pair<absl::Time, Selector::AlarmId>& b) {
   return a.first > b.first;
 };
 }  // namespace
@@ -111,6 +111,13 @@ bool Selector::IsExiting() const {
 bool Selector::IsInSelectThread() const {
   return pthread_t(tid_.load()) == pthread_self();
 }
+void Selector::MakeLoopExit() {
+  if (!IsInSelectThread()) {
+    RunInSelectLoop([this]() { should_end_.store(true); });
+  } else {
+    should_end_.store(true);
+  }
+}
 
 absl::Status Selector::Register(Selectable* s) {
   RET_CHECK(tid_.load() == 0 || IsInSelectThread())
@@ -152,11 +159,11 @@ void Selector::RunInSelectLoop(std::function<void()> callback) {
   }
 }
 
-uint64_t Selector::RegisterAlarm(std::function<void()> callback,
-                                 absl::Duration timeout) {
+Selector::AlarmId Selector::RegisterAlarm(
+    std::function<void()> callback, absl::Duration timeout) {
   absl::Time deadline = absl::Now() + timeout;
   absl::MutexLock l(&alarm_mutex_);
-  const uint64_t alarm_id = alarm_id_.fetch_add(1, std::memory_order_acq_rel);
+  const AlarmId alarm_id = alarm_id_.fetch_add(1, std::memory_order_acq_rel);
   alarms_.emplace(alarm_id, std::move(callback));
   alarm_timeouts_.push_back(std::make_pair(deadline, alarm_id));
   std::push_heap(alarm_timeouts_.begin(), alarm_timeouts_.end(),
@@ -167,13 +174,14 @@ uint64_t Selector::RegisterAlarm(std::function<void()> callback,
   return alarm_id;
 }
 
-void Selector::UnregisterAlarm(uint64_t alarm_id) {
+void Selector::UnregisterAlarm(AlarmId alarm_id) {
   absl::MutexLock l(&alarm_mutex_);
   alarms_.erase(alarm_id);
   num_registered_alarms_.store(alarms_.size());
 }
 
-void Selector::CleanAndCloseAll() {
+absl::Status Selector::CleanAndCloseAll() {
+  RET_CHECK(tid_.load() == 0 || IsInSelectThread());
   // It is some discussion, whether to do some CHECK if connections are
   // left at this point or to close them or to just skip it. The ideea is
   // that we preffer forcing a close on them for the server case and also
@@ -182,6 +190,7 @@ void Selector::CleanAndCloseAll() {
   while (!registered_.empty()) {
     (*registered_.begin())->Close();
   }
+  return absl::OkStatus();
 }
 
 size_t Selector::RunCallbacks(size_t max_num_to_run) {
@@ -246,6 +255,7 @@ void Selector::SendWakeSignal() {
 
 absl::Status Selector::UpdateDesire(Selectable* s,
                                     bool enable, uint32_t desire) {
+  RET_CHECK(tid_.load() == 0 || IsInSelectThread());
   RET_CHECK(s->selector() == this)
     << "Selectable registered w/ a different selector.";
   if ((((s->desire_ & desire) == desire) && enable) ||
@@ -309,7 +319,7 @@ absl::Status Selector::Loop() {
     LoopCallbacks();
     LoopAlarms();
   }
-  CleanAndCloseAll();
+  CleanAndCloseAll().IgnoreError();
   if (call_on_close_) {
     call_on_close_();
   }
@@ -340,7 +350,7 @@ size_t Selector::LoopAlarms() {
     absl::MutexLock l(&alarm_mutex_);
     while (!alarm_timeouts_.empty()
            && alarm_timeouts_.back().first <= end_alarms) {
-      const uint64_t alarm_id = alarm_timeouts_.back().second;
+      const AlarmId alarm_id = alarm_timeouts_.back().second;
       std::pop_heap(alarm_timeouts_.begin(), alarm_timeouts_.end(),
                     &CompareAlarms);
       alarm_timeouts_.pop_back();
@@ -359,6 +369,97 @@ size_t Selector::LoopAlarms() {
     callback();
   }
   return to_run.size();
+}
+
+bool Selector::IsHangUpEvent(int event_value) const {
+  return loop_->IsHangUpEvent(event_value);
+}
+bool Selector::IsRemoteHangUpEvent(int event_value) const {
+  return loop_->IsRemoteHangUpEvent(event_value);
+}
+bool Selector::IsAnyHangUpEvent(int event_value) const {
+  return loop_->IsAnyHangUpEvent(event_value);
+}
+bool Selector::IsErrorEvent(int event_value) const {
+  return loop_->IsErrorEvent(event_value);
+}
+bool Selector::IsInputEvent(int event_value) const {
+  return loop_->IsInputEvent(event_value);
+}
+
+absl::StatusOr<std::unique_ptr<SelectorThread>>
+SelectorThread::Create(Selector::Params params) {
+  auto st = absl::WrapUnique(new SelectorThread());
+  RETURN_IF_ERROR(st->Initialize(std::move(params)));
+  return st;
+}
+
+SelectorThread::SelectorThread() {
+}
+
+SelectorThread::~SelectorThread() {
+  Stop();
+}
+
+bool SelectorThread::Start() {
+  absl::WriterMutexLock l(&mutex_);
+  if (thread_ != nullptr || is_started_.load()) {
+    return false;
+  }
+  thread_ = absl::make_unique<std::thread>(&SelectorThread::Run, this);
+  is_started_.store(true);
+  return true;
+}
+
+bool SelectorThread::Stop() {
+  std::unique_ptr<std::thread> saved_thread;
+  {
+    absl::WriterMutexLock l(&mutex_);
+    saved_thread = std::move(thread_);
+  }
+  if (saved_thread == nullptr) {
+    return false;
+  }
+  selector_->MakeLoopExit();
+  saved_thread->join();
+  is_started_.store(false);
+  return true;
+}
+
+void SelectorThread::CleanAndCloseAll() {
+  selector_->RunInSelectLoop([this]() {
+    selector_->CleanAndCloseAll().IgnoreError();
+  });
+}
+
+const Selector* SelectorThread::selector() const {
+  return selector_.get();
+}
+
+Selector* SelectorThread::selector() {
+  return selector_.get();
+}
+
+bool SelectorThread::is_started() const {
+  return is_started_.load();
+}
+
+absl::Status SelectorThread::selector_status() const {
+  absl::ReaderMutexLock l(&mutex_);
+  return selector_status_;
+}
+
+absl::Status SelectorThread::Initialize(Selector::Params params) {
+  ASSIGN_OR_RETURN(selector_, Selector::Create(std::move(params)),
+                   _ << "Creating underlying selector for selector thread.");
+  return absl::OkStatus();
+}
+
+void SelectorThread::Run() {
+  absl::Status status = selector_->Loop();
+
+  absl::WriterMutexLock l(&mutex_);
+  selector_status_ = status;
 }
 
 }  // namespace net

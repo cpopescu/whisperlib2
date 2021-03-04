@@ -128,6 +128,21 @@ EpollSelectorLoop::LoopStep(absl::Duration timeout) {
   }
   return events;
 }
+bool EpollSelectorLoop::IsHangUpEvent(int event_value) const {
+  return (event_value & EPOLLHUP) != 0;
+}
+bool EpollSelectorLoop::IsRemoteHangUpEvent(int event_value) const {
+  return (event_value & EPOLLRDHUP) != 0;
+}
+bool EpollSelectorLoop::IsAnyHangUpEvent(int event_value) const {
+  return (event_value & (EPOLLHUP | EPOLLRDHUP)) != 0;
+}
+bool EpollSelectorLoop::IsErrorEvent(int event_value) const {
+  return (event_value & EPOLLERR) != 0;
+}
+bool EpollSelectorLoop::IsInputEvent(int event_value) const {
+  return (event_value & EPOLLIN) != 0;
+}
 #endif  // HAVE_EPOLL
 
 PollSelectorLoop::PollSelectorLoop(int signal_fd, int max_events_per_step)
@@ -269,6 +284,22 @@ PollSelectorLoop::LoopStep(absl::Duration timeout) {
     --num_events;
   }
   return events;
+}
+
+bool PollSelectorLoop::IsHangUpEvent(int event_value) const {
+  return (event_value & POLLHUP) != 0;
+}
+bool PollSelectorLoop::IsRemoteHangUpEvent(int event_value) const {
+  return (event_value & POLLRDHUP) != 0;
+}
+bool PollSelectorLoop::IsAnyHangUpEvent(int event_value) const {
+  return (event_value & (POLLHUP | POLLRDHUP)) != 0;
+}
+bool PollSelectorLoop::IsErrorEvent(int event_value) const {
+  return (event_value & POLLERR) != 0;
+}
+bool PollSelectorLoop::IsInputEvent(int event_value) const {
+  return (event_value & POLLIN) != 0;
 }
 
 }  // namespace net

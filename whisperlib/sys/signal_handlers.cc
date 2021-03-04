@@ -3,11 +3,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
-#include <gperftools/heap-profiler.h>
 
 #include <atomic>
 #include <iostream>
 
+#include "absl/debugging/stacktrace.h"
+#include "absl/debugging/symbolize.h"
+#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
+#include "absl/strings/str_join.h"
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "glog/logging.h"
@@ -18,6 +22,7 @@ namespace whisper {
 namespace sys {
 
 namespace {
+std::atomic_bool g_symbolizer_initialized = ATOMIC_VAR_INIT(false);
 std::atomic_bool g_hang_on_signal_stack_trace = ATOMIC_VAR_INIT(false);
 // true if the application is already hanging
 std::atomic_bool g_application_is_hanging = ATOMIC_VAR_INIT(false);
@@ -31,8 +36,10 @@ void HandleSignal(int signum, siginfo_t* /*info*/, void* /*context*/) {
   std::cerr << "\033[31m On [" << absl::FormatTime(now)
             << " (" << absl::FormatTime(now, absl::UTCTimeZone())
             << ")]" << std::endl
-            << " Signal cought " << signum << " - " << strsignal(signum)
-            << "\033[0m" << std::endl;
+            << " Signal intercepted " << signum << " - " << strsignal(signum)
+            << "\033[0m" << std::endl
+            << " Stack trace: " << std::endl
+            << absl::StrJoin(GetStackTrace(), "\n") << std::endl;
   std::cerr.flush();
 
   if (g_hang_on_signal_stack_trace.load()) {
@@ -46,19 +53,42 @@ void HandleSignal(int signum, siginfo_t* /*info*/, void* /*context*/) {
     }
   }
 
-  // if you want to continue, do not call default handler
-  if ( signum == SIGUSR1 ) {
-    HeapProfilerDump("on user command");
-    return;
-  }
-
   // call default handler
   ::signal(signum, SIG_DFL);
   ::raise(signum);
 }
 }  // namespace
 
-absl::Status InstallDefaultSignalHandlers(bool hang_on_bad_signals) {
+std::vector<std::string> GetStackTrace(int max_depth, bool symbolize) {
+  auto stacks = absl::make_unique<void*[]>(max_depth);
+  auto sizes = absl::make_unique<int[]>(max_depth);
+  const int num_frames = absl::GetStackFrames(
+      stacks.get(), sizes.get(), max_depth, 1);
+  if (!g_symbolizer_initialized.load()) {
+    symbolize = false;
+  }
+  std::vector<std::string> result;
+  char buffer[1024];
+  result.reserve(num_frames);
+  for (int i = 0; i < num_frames; ++i) {
+    result.emplace_back(absl::StrFormat("  @%p [%6d]  ", stacks[i], sizes[i]));
+    if (symbolize && absl::Symbolize(stacks[i], buffer, sizeof(buffer))) {
+      absl::StrAppend(&result.back(), buffer);
+    } else {
+      absl::StrAppend(&result.back(), "(unknown)");
+    }
+  }
+  return result;
+}
+
+absl::Status InstallDefaultSignalHandlers(
+    const char* argv0, bool hang_on_bad_signals) {
+  bool symbolizer_initialized = false;
+  if (argv0 != 0 &&
+      g_symbolizer_initialized.compare_exchange_strong(
+          symbolizer_initialized, true)) {
+    absl::InitializeSymbolizer(argv0);
+  }
   g_hang_on_signal_stack_trace.store(hang_on_bad_signals);
 
   // install signal handler routines
@@ -72,7 +102,8 @@ absl::Status InstallDefaultSignalHandlers(bool hang_on_bad_signals) {
 
   absl::Status status;
   for (auto sig_num : {
-      SIGABRT, SIGBUS, SIGHUP, SIGFPE, SIGILL, SIGUSR1, SIGSEGV}) {
+      SIGSEGV, SIGILL, SIGFPE, SIGABRT, SIGTERM, SIGBUS, SIGHUP }) {
+    // SIGUSR1 => Dump heap profile ?
     if (-1 == ::sigaction(sig_num, &sa, NULL)) {
       status::UpdateOrAnnotate(
           status, error::ErrnoToStatus(error::Errno())
