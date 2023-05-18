@@ -43,6 +43,7 @@ absl::StatusOr<std::unique_ptr<Selector>> Selector::Create(Params params) {
 }
 
 absl::Status Selector::Initialize() {
+#ifdef HAVE_EPOLL
   if (params_.use_event_fd) {
     event_fd_ = ::eventfd(0, 0);
     if (event_fd_ < 0) {
@@ -52,7 +53,10 @@ absl::Status Selector::Initialize() {
     RETURN_IF_ERROR(SetupNonBlocking(event_fd_))
       << "For event file descriptor.";
     signal_fd_ = event_fd_;
+    return status::UnimplementedErrorBuilder(
+        "Event FD not supported on this sytem");
   } else {
+#endif  // HAVE_EPOLL
     if (::pipe(signal_pipe_)) {
       return error::ErrnoToStatus(error::Errno())
         << "Creating ::pipe(..) file descriptors.";
@@ -62,16 +66,20 @@ absl::Status Selector::Initialize() {
     RETURN_IF_ERROR(SetupNonBlocking(signal_pipe_[1]))
       << "For pipe file descriptor 1.";
     signal_fd_ = signal_pipe_[0];
+#ifdef HAVE_EPOLL
   }
   if (params_.use_epoll) {
     ASSIGN_OR_RETURN(loop_, EpollSelectorLoop::Create(
         signal_fd_, params_.max_events_per_step),
                      _ << "Creating the selector loop based on epoll.");
   } else {
+#endif  // HAVE_EPOLL
     ASSIGN_OR_RETURN(loop_, PollSelectorLoop::Create(
         signal_fd_, params_.max_events_per_step),
                      _ << "Creating the selector loop based on poll.");
+#ifdef HAVE_EPOLL
   }
+#endif // HAVE_EPOLL
   return absl::OkStatus();
 }
 
@@ -168,8 +176,8 @@ Selector::AlarmId Selector::RegisterAlarm(
   alarm_timeouts_.push_back(std::make_pair(deadline, alarm_id));
   std::push_heap(alarm_timeouts_.begin(), alarm_timeouts_.end(),
                  &CompareAlarms);
-  next_alarm_time_.store(absl::ToUnixNanos(alarm_timeouts_.back().first),
-                         std::memory_order_acq_rel);
+  next_alarm_time_.store(absl::ToUnixNanos(alarm_timeouts_.back().first));
+  // std::memory_order_acq_rel);
   num_registered_alarms_.store(alarms_.size());
   return alarm_id;
 }
@@ -277,7 +285,7 @@ absl::Status Selector::Loop() {
   while (!should_end_.load()) {
     absl::Duration loop_timeout = params_.default_loop_timeout;
     UpdateNow();
-    if (!to_run_.empty()) {
+    if (have_to_run_.load()) {
       loop_timeout = absl::ZeroDuration();
     } else {
       const absl::Duration alarm_delta = std::max(
@@ -363,7 +371,7 @@ size_t Selector::LoopAlarms() {
     num_registered_alarms_.store(alarms_.size());
     next_alarm_time_.store(absl::ToUnixNanos(
         alarm_timeouts_.empty() ? absl::InfinitePast()
-        : alarm_timeouts_.back().first), std::memory_order_acq_rel);
+        : alarm_timeouts_.back().first));  // , std::memory_order_acq_rel);
   }
   for (auto callback : to_run) {
     callback();

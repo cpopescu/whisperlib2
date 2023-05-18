@@ -1,0 +1,4 @@
+build --cxxopt='-std=c++17'
+build --javacopt="--release 8"
+build --host_cxxopt='-std=c++17'
+build --copt -D_FILE_OFFSET_BITS=64

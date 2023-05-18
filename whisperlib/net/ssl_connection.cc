@@ -6,6 +6,7 @@
 #include "absl/strings/escaping.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
+#include "whisperlib/base/call_on_return.h"
 #include "whisperlib/io/errno.h"
 #include "whisperlib/status/status.h"
 
@@ -41,7 +42,7 @@ std::string SslUtils::SslLastError() {
   while (true) {
     int line = 0;
     const char* file = nullptr;
-    const int e = ERR_get_error_line(&file, &line);
+    const int e = ERR_peek_last_error_line(&file, &line);
     if (e == 0) { break; }
     char text[512] = {0,};
     ERR_error_string_n(e, text, sizeof(text));
@@ -55,9 +56,10 @@ std::string SslUtils::SslLastError() {
 void SslUtils::SslLibraryInit() {
   SSL_library_init();                      // initialize library
   SSL_load_error_strings();                // readable error messages
-  ERR_load_SSL_strings();
-  ERR_load_CRYPTO_strings();
-  ERR_load_crypto_strings();
+  // No longer needed:
+  // ERR_load_SSL_strings();
+  // ERR_load_CRYPTO_strings();
+  // ERR_load_crypto_strings();
   // actions_to_seed_PRNG();
 }
 absl::StatusOr<X509*>
@@ -507,7 +509,7 @@ absl::Status SslConnection::TcpConnectionWriteHandler() {
       bytes_written += cb;
       // write - the number of encrypted bytes written in BIO, always > read
       write_blocked_on_read_.store(false);
-      if (write <= 0) {
+      if (cb <= 0) {
         const int error = SSL_get_error(p_ssl_, cb);
         switch(error) {
         case SSL_ERROR_WANT_READ:
@@ -704,9 +706,10 @@ absl::Status SslConnection::SslHandshake() {
   // The handshake is completed for this endpoint(SSL_do_handshake returned 1).
   // But maybe we need to send some data to the other endpoint.
   int ssl_want = SSL_want(p_ssl_);
-  VLOG(1) << "ssl_want: " << ssl_want << " " << SslUtils::SslWantName(ssl_want)
-          << ", BIO_pending(p_bio_write_): " << BIO_pending(p_bio_write_)
-          << ", BIO_pending(p_bio_read_): " << BIO_pending(p_bio_read_);
+  LOG(INFO).WithVerbosity(1)
+    << "ssl_want: " << ssl_want << " " << SslUtils::SslWantName(ssl_want)
+    << ", BIO_pending(p_bio_write_): " << BIO_pending(p_bio_write_)
+    << ", BIO_pending(p_bio_read_): " << BIO_pending(p_bio_read_);
   RETURN_IF_ERROR(RequestWriteEvents(true));
   // Next thing TcpConnectionWriteHandler will read from SSl
   // --> write to TCP and will call SslHandshake again.

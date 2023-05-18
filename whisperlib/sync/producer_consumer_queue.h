@@ -8,7 +8,7 @@
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
-#include "whisperlib/base/call_on_return.h"
+// #include "whisperlib/base/call_on_return.h"
 #include "whisperlib/status/status.h"
 
 namespace whisper {
@@ -35,8 +35,9 @@ class ProducerConsumerQueue {
   bool PutAt(C c, absl::Duration timeout = absl::InfiniteDuration(),
              bool at_front = false)
     ABSL_LOCKS_EXCLUDED(mutex_) {
-    mutex_.Lock();
-    base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
+    absl::MutexLock l(&mutex_);
+    // mutex_.Lock();
+    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasEmptySpace()) {
       mutex_.AwaitWithTimeout(absl::Condition(
           this, &ProducerConsumerQueue<C>::HasEmptySpace), timeout);
@@ -53,8 +54,9 @@ class ProducerConsumerQueue {
   }
   // Returns the first available element at the front of the queue.
   ABSL_MUST_USE_RESULT C Get() ABSL_LOCKS_EXCLUDED(mutex_) {
-    mutex_.Lock();
-    base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
+    absl::MutexLock l(&mutex_);
+    // mutex_.Lock();
+    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasData()) {
       mutex_.Await(absl::Condition(
           this, &ProducerConsumerQueue<C>::HasData));
@@ -69,8 +71,9 @@ class ProducerConsumerQueue {
   ABSL_MUST_USE_RESULT bool TryGet(
       C* c, absl::Duration timeout = absl::ZeroDuration())
     ABSL_LOCKS_EXCLUDED(mutex_) {
-    mutex_.Lock();
-    base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
+    absl::MutexLock l(&mutex_);
+    // mutex_.Lock();
+    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasData()) {
       mutex_.AwaitWithTimeout(absl::Condition(
           this, &ProducerConsumerQueue<C>::HasData), timeout);
@@ -118,7 +121,7 @@ class ProducerConsumerQueue {
   const size_t max_size_;
   const bool fifo_policy_;
   mutable absl::Mutex mutex_;
-  std::deque<C> data_ GUARDED_BY(mutex_);
+  std::deque<C> data_ ABSL_GUARDED_BY(mutex_);
 };
 
 }  // namespace synch

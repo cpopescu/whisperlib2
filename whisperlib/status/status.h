@@ -5,10 +5,12 @@
 #include <utility>
 
 #include "absl/base/attributes.h"
+#include "absl/log/check.h"
+#include "absl/log/die_if_null.h"
+#include "absl/log/log.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
-#include "glog/logging.h"
 
 namespace whisper {
 namespace status {
@@ -103,7 +105,7 @@ ASSIGN_OR_RETURN_IMPL(                                          \
         "` does not hold")                                              \
       << "In file: " << __FILE__ << " at line: " << __LINE__
 
-
+/*
 #define CHECK_OK_IMPL(status_name, expr)                        \
 absl::Status status_name = (expr);                              \
 if (ABSL_PREDICT_FALSE(!status_name.ok()))                      \
@@ -111,6 +113,7 @@ if (ABSL_PREDICT_FALSE(!status_name.ok()))                      \
 
 #define CHECK_OK(expr)                                          \
 CHECK_OK_IMPL(STATUS_MACROS_CONCAT_NAME(_check_ok, __COUNTER__), (expr))
+*/
 
 #ifndef ABSL_DIE_IF_NULL
 #define ABSL_DIE_IF_NULL(val) \

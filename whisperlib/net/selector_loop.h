@@ -19,6 +19,11 @@
 #define EPOLLRDHUP 0
 #endif
 #define HAVE_EPOLL
+#else
+#include <poll.h>
+#ifndef POLLRDHUP
+#define POLLRDHUP 0
+#endif
 #endif  // __linux
 
 namespace whisper {
@@ -27,7 +32,7 @@ namespace net {
 class SelectorLoop {
 public:
   SelectorLoop() = default;
-  ~SelectorLoop() = default;
+  virtual ~SelectorLoop() = default;
 
   // Adds a file descriptor tot the select loop, with some associated
   // user data and desires for operations to be performed (OR of SelectDesire
@@ -57,7 +62,7 @@ public:
 class EpollSelectorLoop : public SelectorLoop {
 public:
   static absl::StatusOr<std::unique_ptr<EpollSelectorLoop>> Create(
-      int signal_fd, size_t max_events_per_loop);
+      int signal_fd, size_t max_events_per_step);
   ~EpollSelectorLoop();
 
   absl::Status Add(int fd, void* user_data, uint32_t desires) override;
@@ -90,12 +95,13 @@ private:
 };
 #endif  // HAVE_EPOLL
 
+
 // A selector loop implementation based on poll - available on most systems,
 // but with some limitations and of lower speed.
 class PollSelectorLoop : public SelectorLoop {
 public:
   static absl::StatusOr<std::unique_ptr<PollSelectorLoop>> Create(
-      int signal_fd, size_t max_events_per_loop);
+      int signal_fd, size_t max_events_per_step);
   ~PollSelectorLoop();
 
   absl::Status Add(int fd, void* user_data, uint32_t desires) override;

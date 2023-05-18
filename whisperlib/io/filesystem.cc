@@ -288,7 +288,7 @@ absl::StatusOr<std::vector<std::string>> DirList(
   }
   std::vector<std::string> out;
   while (true) {
-    struct dirent64* entry = ::readdir64(dirp);
+    struct dirent* entry = ::readdir(dirp);
     if (entry == nullptr) {
       break;
     }

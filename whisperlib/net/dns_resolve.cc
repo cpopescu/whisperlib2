@@ -74,16 +74,18 @@ const icu::IDNA* CreateIdna() {
 }  // namespace
 
 absl::StatusOr<std::string> DnsHostInfo::GetDnsResolveName() const {
+  // Thread safe instance to be used for converting to idna names from
+  // utf-8 non-ascii hostnames.
   static const icu::IDNA* idna = CreateIdna();
   bool is_ascii = true;
-  for (auto c : hostname_) {
-    if (c < 0 || c >= 0x80) {
+  for (char c : hostname_) {
+    if (c < 0) {
       is_ascii = false; break;
     }
   }
   if (is_ascii) { return std::string(hostname_); }
   if (ABSL_PREDICT_FALSE(idna == nullptr)) {
-    return absl::InternalError("Error creating IDNA icu object.");
+    return absl::InternalError("Error creating IDNA conversion object.");
   }
   std::string result;
   icu::StringByteSink<std::string> sink(&result);

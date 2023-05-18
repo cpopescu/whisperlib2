@@ -16,9 +16,9 @@ int PollTimeout(absl::Duration timeout) {
 
 #ifdef HAVE_EPOLL
 absl::StatusOr<std::unique_ptr<EpollSelectorLoop>> EpollSelectorLoop::Create(
-    int signal_fd, size_t max_events_per_loop) {
+    int signal_fd, size_t max_events_per_step) {
   auto loop = absl::WrapUnique(
-      new EpollSelectorLoop(signal_fd, max_events_per_loop));
+      new EpollSelectorLoop(signal_fd, max_events_per_step));
   RETURN_IF_ERROR(loop->Initialize());
   return loop;
 }
@@ -153,9 +153,9 @@ PollSelectorLoop::PollSelectorLoop(int signal_fd, int max_events_per_step)
 const size_t PollSelectorLoop::kMaxFds;
 
 absl::StatusOr<std::unique_ptr<PollSelectorLoop>> PollSelectorLoop::Create(
-    int signal_fd, size_t max_events_per_loop) {
+    int signal_fd, size_t max_events_per_step) {
   auto loop = absl::WrapUnique(
-      new PollSelectorLoop(signal_fd, max_events_per_loop));
+      new PollSelectorLoop(signal_fd, max_events_per_step));
   RETURN_IF_ERROR(loop->Initialize());
   return loop;
 }

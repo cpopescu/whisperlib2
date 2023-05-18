@@ -6,9 +6,9 @@
 #include <utility>
 #include <vector>
 
+#include "absl/log/check.h"
 #include "absl/memory/memory.h"
 #include "absl/synchronization/mutex.h"
-#include "glog/logging.h"
 
 namespace whisper {
 namespace base {

@@ -8,6 +8,7 @@
 #include "absl/strings/str_cat.h"
 #include "whisperlib/status/status.h"
 
+
 namespace whisper {
 namespace net {
 
@@ -83,7 +84,7 @@ absl::StatusOr<IpAddress> IpAddress::ParseFromString(absl::string_view ip) {
   std::string ip_str(ip);
   in_addr addr;
   if (inet_pton(AF_INET, ip_str.c_str(), &addr) == 1) {
-    return IpAddress(::ntohl(addr.s_addr));
+    return IpAddress(ntohl(addr.s_addr));
   }
   in6_addr addr6;
   if (inet_pton(AF_INET6, ip_str.c_str(), &addr6) == 1) {
@@ -116,7 +117,7 @@ void IpAddress::ToSockAddr(sockaddr_storage* addr) const {
   if (is_ipv4()) {
     auto saddr = reinterpret_cast<struct sockaddr_in*>(addr);
     saddr->sin_family = AF_INET;
-    saddr->sin_addr.s_addr = ::htonl(ipv4());
+    saddr->sin_addr.s_addr = htonl(ipv4());
   } else {
     auto saddr = reinterpret_cast<struct sockaddr_in6*>(addr);
     saddr->sin6_family = AF_INET6;
@@ -177,9 +178,9 @@ SockAddrSetter& SockAddrSetter::SetIpFamily(bool is_ipv6) {
 }
 SockAddrSetter& SockAddrSetter::SetPort(uint16_t port) {
   if (addr_.ss_family == AF_INET6) {
-    sockaddr_in6()->sin6_port = ::htons(port);
+    sockaddr_in6()->sin6_port = htons(port);
   } else if (addr_.ss_family == AF_INET) {
-    sockaddr_in()->sin_port = ::htons(port);
+    sockaddr_in()->sin_port = htons(port);
   }
   return *this;
 }
@@ -193,7 +194,7 @@ SockAddrSetter& SockAddrSetter::SetUseAnyAddress() {
 }
 SockAddrSetter& SockAddrSetter::SetIpV6ScopeId(uint32_t scope_id) {
   if (addr_.ss_family == AF_INET6) {
-    sockaddr_in6()->sin6_scope_id = ::htonl(scope_id);
+    sockaddr_in6()->sin6_scope_id = htonl(scope_id);
   }
   return *this;
 }
@@ -305,13 +306,13 @@ absl::Status HostPort::ToSockAddr(sockaddr_storage* addr) const {
   ip_.value().ToSockAddr(addr);
   if (addr->ss_family == AF_INET6) {
     auto saddr = reinterpret_cast<struct sockaddr_in6*>(addr);
-    saddr->sin6_port = ::htons(port_.value());
+    saddr->sin6_port = htons(port_.value());
     if (scope_id_.has_value()) {
-      saddr->sin6_scope_id = ::htonl(scope_id_.value());
+      saddr->sin6_scope_id = htonl(scope_id_.value());
     }
   } else if (addr->ss_family == AF_INET) {
     auto saddr = reinterpret_cast<struct sockaddr_in*>(addr);
-    saddr->sin_port = ::htons(port_.value());
+    saddr->sin_port = htons(port_.value());
   }
   return absl::OkStatus();
 }
@@ -365,12 +366,12 @@ absl::StatusOr<HostPort> HostPort::ParseFromSockAddr(
   // The Ip parsing verifies the size, no longer need to do it here.
   if (saddr->sa_family == AF_INET) {
     auto saddr_in = reinterpret_cast<const sockaddr_in*>(saddr);
-    hp.set_port(::ntohs(saddr_in->sin_port));
+    hp.set_port(ntohs(saddr_in->sin_port));
   } else if (saddr->sa_family == AF_INET6) {
     auto saddr_in6 = reinterpret_cast<const sockaddr_in6*>(saddr);
-    hp.set_port(::ntohs(saddr_in6->sin6_port));
+    hp.set_port(ntohs(saddr_in6->sin6_port));
     if (saddr_in6->sin6_scope_id != 0) {
-      hp.set_scope_id(::ntohl(saddr_in6->sin6_scope_id));
+      hp.set_scope_id(ntohl(saddr_in6->sin6_scope_id));
     }
   }
   return hp;

@@ -82,7 +82,7 @@ TEST(IpAddress, SockAddr) {
     ip.ToSockAddr(&addr);
     EXPECT_EQ(addr.ss_family, AF_INET);
     EXPECT_EQ((reinterpret_cast<struct sockaddr_in*>(&addr))->sin_addr.s_addr,
-              ::htonl(0x7f000003));
+              htonl(0x7f000003));
   }
   {
     ASSERT_OK_AND_ASSIGN(auto ip, IpAddress::ParseFromString(
@@ -105,18 +105,18 @@ TEST(SockAddrSetter, Basic) {
     s.SetPort(0x1234);
     EXPECT_EQ(s.addr()->sa_family, AF_INET);
     EXPECT_EQ((reinterpret_cast<const struct sockaddr_in*>(s.addr()))
-              ->sin_addr.s_addr, ::htonl(0x7f000001));
+              ->sin_addr.s_addr, htonl(0x7f000001));
     EXPECT_EQ((reinterpret_cast<const struct sockaddr_in*>(s.addr()))
-              ->sin_port, ::htons(0x1234));
+              ->sin_port, htons(0x1234));
   }
   {
     SockAddrSetter s;
     s.SetIpFamily(false).SetUseAnyAddress().SetPort(0x1234);
     EXPECT_EQ(s.addr()->sa_family, AF_INET);
     EXPECT_EQ((reinterpret_cast<const struct sockaddr_in*>(s.addr()))
-              ->sin_addr.s_addr, ::htonl(INADDR_ANY));
+              ->sin_addr.s_addr, htonl(INADDR_ANY));
     EXPECT_EQ((reinterpret_cast<const struct sockaddr_in*>(s.addr()))
-              ->sin_port, ::htons(0x1234));
+              ->sin_port, htons(0x1234));
   }
   {
     ASSERT_OK_AND_ASSIGN(auto ip, IpAddress::ParseFromString(
@@ -132,10 +132,10 @@ TEST(SockAddrSetter, Basic) {
         ->sin6_addr.s6_addr, kExpected, sizeof(kExpected)), 0);
     EXPECT_EQ(
         (reinterpret_cast<const struct sockaddr_in6*>(s.addr()))->sin6_port,
-        ::htons(0x1234));
+        htons(0x1234));
     EXPECT_EQ(
         (reinterpret_cast<const struct sockaddr_in6*>(s.addr()))->sin6_scope_id,
-        ::htonl(0x3456));
+        htonl(0x3456));
   }
   {
     SockAddrSetter s;
@@ -143,7 +143,7 @@ TEST(SockAddrSetter, Basic) {
     EXPECT_EQ(s.addr()->sa_family, AF_INET6);
     EXPECT_EQ(
         (reinterpret_cast<const struct sockaddr_in6*>(s.addr()))->sin6_port,
-        ::htons(0x1234));
+        htons(0x1234));
     static const uint8_t kExpected[] = {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
     EXPECT_EQ(memcmp(

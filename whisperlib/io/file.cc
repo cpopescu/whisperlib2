@@ -85,7 +85,7 @@ absl::Status File::Open(absl::string_view filename,
                         Access acc, CreationDisposition cd) {
   RET_CHECK(!is_open()) << "Cannot open an already opened file: `"
                         << filename << "`";
-  int flags = O_NOCTTY | O_LARGEFILE;
+  int flags = O_NOCTTY;
   switch (cd) {
   case CREATE_ALWAYS:     flags |= O_CREAT | O_TRUNC; break;
   case CREATE_NEW:        flags |= O_CREAT | O_EXCL; break;
@@ -108,7 +108,6 @@ absl::Status File::Open(absl::string_view filename,
       << "Cannot open filename `" << filename
       << "` - Invalid access: " << acc;
   }
-  flags |= O_LARGEFILE;
 
   std::string filename_str(filename);
   const int fd = ::open(filename_str.c_str(), flags, mode);
@@ -321,7 +320,7 @@ absl::StatusOr<size_t> File::WriteCordVec(
 absl::Status File::Flush() {
   RET_CHECK(is_open());
 #ifdef F_FULLFSYNC
-  if (ABSL_PREDICT_FALSE(fcntl((fd), F_FULLFSYNC) < 0)) {
+  if (ABSL_PREDICT_FALSE(fcntl((fd_), F_FULLFSYNC) < 0)) {
     return error::ErrnoToStatus(error::Errno())
       << "Syncing data of file `" << filename_ << "` with fcntl";
   }
