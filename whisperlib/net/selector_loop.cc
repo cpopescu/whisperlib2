@@ -145,17 +145,15 @@ bool EpollSelectorLoop::IsInputEvent(int event_value) const {
 }
 #endif  // HAVE_EPOLL
 
-PollSelectorLoop::PollSelectorLoop(int signal_fd, int max_events_per_step)
-  : signal_fd_(signal_fd),
-    max_events_per_step_(max_events_per_step) {
+PollSelectorLoop::PollSelectorLoop(int signal_fd)
+  : signal_fd_(signal_fd) {
 }
 
 const size_t PollSelectorLoop::kMaxFds;
 
 absl::StatusOr<std::unique_ptr<PollSelectorLoop>> PollSelectorLoop::Create(
-    int signal_fd, size_t max_events_per_step) {
-  auto loop = absl::WrapUnique(
-      new PollSelectorLoop(signal_fd, max_events_per_step));
+    int signal_fd) {
+  auto loop = absl::WrapUnique(new PollSelectorLoop(signal_fd));
   RETURN_IF_ERROR(loop->Initialize());
   return loop;
 }

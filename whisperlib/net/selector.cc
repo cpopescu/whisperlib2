@@ -74,8 +74,7 @@ absl::Status Selector::Initialize() {
                      _ << "Creating the selector loop based on epoll.");
   } else {
 #endif  // HAVE_EPOLL
-    ASSIGN_OR_RETURN(loop_, PollSelectorLoop::Create(
-        signal_fd_, params_.max_events_per_step),
+    ASSIGN_OR_RETURN(loop_, PollSelectorLoop::Create(signal_fd_),
                      _ << "Creating the selector loop based on poll.");
 #ifdef HAVE_EPOLL
   }

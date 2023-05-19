@@ -16,14 +16,11 @@ inline const char* ErrorBuffer<int>(const char* buffer, int result) {
   if (!result) { return buffer; }
   return "{No errno description found.}";
 }
-
-/*
 template<>
 inline const char* ErrorBuffer<char*>(const char* buffer, char* result) {
   if (result == nullptr) { return buffer; }
   return "{No errno description found.}";
 }
-*/
 
 #define CASE_STR(name)                          \
 case name: return #name

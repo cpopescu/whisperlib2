@@ -101,7 +101,7 @@ private:
 class PollSelectorLoop : public SelectorLoop {
 public:
   static absl::StatusOr<std::unique_ptr<PollSelectorLoop>> Create(
-      int signal_fd, size_t max_events_per_step);
+      int signal_fd);
   ~PollSelectorLoop();
 
   absl::Status Add(int fd, void* user_data, uint32_t desires) override;
@@ -118,11 +118,10 @@ public:
   bool IsInputEvent(int event_value) const override;
 
 private:
-  PollSelectorLoop(int signal_fd, int max_events_per_step);
+  PollSelectorLoop(int signal_fd);
   absl::Status Initialize();
 
   const int signal_fd_;
-  const size_t max_events_per_step_;
 
   // Converts a Selector desire in some poll flags.
   int DesiresToPollEvents(uint32_t desires);

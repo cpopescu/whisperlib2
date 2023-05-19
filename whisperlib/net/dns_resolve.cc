@@ -1,5 +1,6 @@
 #include "whisperlib/net/dns_resolve.h"
 
+#include <algorithm>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -77,12 +78,9 @@ absl::StatusOr<std::string> DnsHostInfo::GetDnsResolveName() const {
   // Thread safe instance to be used for converting to idna names from
   // utf-8 non-ascii hostnames.
   static const icu::IDNA* idna = CreateIdna();
-  bool is_ascii = true;
-  for (char c : hostname_) {
-    if (c < 0) {
-      is_ascii = false; break;
-    }
-  }
+  const bool is_ascii = std::all_of(
+      hostname_.begin(), hostname_.end(),
+      [](unsigned char c) { return c < 128; });
   if (is_ascii) { return std::string(hostname_); }
   if (ABSL_PREDICT_FALSE(idna == nullptr)) {
     return absl::InternalError("Error creating IDNA conversion object.");
