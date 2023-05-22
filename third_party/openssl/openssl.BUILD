@@ -157,14 +157,14 @@ build_cmd = """
     ROOT=$$(dirname $(execpath NOTES-ANDROID.md))
     INSTALL_ROOT=$$(dirname $$(dirname $$(dirname $(location install/lib/libssl.a))))
     pushd $$ROOT
-    ./config --prefix=$$(pwd)/install no-tests > /dev/null
+    ./config --prefix=$$(pwd)/install --libdir=lib no-tests > /dev/null
     make -j$$(nproc 2>/dev/null || sysctl -n hw.ncpu) > /dev/null
     make install_sw > /dev/null
 
     # Move compiled libraries to the expected destinations.
     popd
-    mkdir -p $$INSTALL_ROOT/install
-    cp -rf $$ROOT/install $$INSTALL_ROOT/
+    mkdir -p $${INSTALL_ROOT}/install
+    cp -rf $${ROOT}/install $${INSTALL_ROOT}/
     """
 
 outs = openssl_libs + openssl_headers
