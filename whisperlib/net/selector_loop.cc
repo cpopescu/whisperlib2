@@ -23,19 +23,19 @@ absl::StatusOr<std::unique_ptr<EpollSelectorLoop>> EpollSelectorLoop::Create(
   return loop;
 }
 
-EpollSelectorLoop::EpollSelectorLoop(int signal_fd, int max_events_per_step)
+EpollSelectorLoop::EpollSelectorLoop(int signal_fd,
+                                     size_t max_events_per_step)
   : signal_fd_(signal_fd),
-    max_events_per_step_(max_events_per_step),
-    events_(new struct epoll_event[max_events_per_step]) {
+    events_(max_events_per_step) {
 }
 
 EpollSelectorLoop::~EpollSelectorLoop() {
-  // cleanup epoll
-  ::close(epfd_);
+  close(epfd_);
 }
 
 absl::Status EpollSelectorLoop::Initialize() {
-  epfd_ = ::epoll_create(10);  // argument outdated needs to be > 0
+  // argument outdated anyway - needs to be > 0
+  epfd_ = ::epoll_create(1);
   if (epfd_ < 0) {
     return error::ErrnoToStatus(error::Errno())
       << "Creating epoll file descriptor during ::epoll_create()";
@@ -102,7 +102,7 @@ uint32_t EpollSelectorLoop::DesiresToEpollEvents(uint32_t desires) {
 
 absl::StatusOr<std::vector<SelectorEventData>>
 EpollSelectorLoop::LoopStep(absl::Duration timeout) {
-  const int num_events = epoll_wait(epfd_, events_.get(), max_events_per_step_,
+  const int num_events = epoll_wait(epfd_, &events_[0], events_.size(),
                                     PollTimeout(timeout));
   if (num_events < 0 && errno != EINTR) {
     return error::ErrnoToStatus(error::Errno())
@@ -299,6 +299,35 @@ bool PollSelectorLoop::IsErrorEvent(int event_value) const {
 bool PollSelectorLoop::IsInputEvent(int event_value) const {
   return (event_value & POLLIN) != 0;
 }
+
+#ifdef HAVE_KQUEUE
+
+static const int kKQueueHangUp = 1;
+static const int kKQueueErrorEvent = 2;
+static const int kKQueueInputEvent = 4;
+
+
+bool KQueueSelectorLoop::IsHangUpEvent(int event_value) const {
+  return (event_value & kKQueueHangUp) != 0;
+}
+
+bool KQueueSelectorLoop::IsRemoteHangUpEvent(int event_value) const {
+  return false;
+}
+
+bool KQueueSelectorLoop::IsAnyHangUpEvent(int event_value) const {
+  return (event_value & kKQueueHangUp) != 0;
+}
+
+bool KQueueSelectorLoop::IsErrorEvent(int event_value) const {
+  return (event_value & kKQueueErrorEvent) != 0;
+}
+
+bool KQueueSelectorLoop::IsInputEvent(int event_value) const {
+  return (event_value & kKQueueInputEvent) != 0;
+}
+
+#endif  // HAVE_KQUEUE
 
 }  // namespace net
 }  // namespace whisper

@@ -43,20 +43,8 @@ absl::StatusOr<std::unique_ptr<Selector>> Selector::Create(Params params) {
 }
 
 absl::Status Selector::Initialize() {
-#ifdef HAVE_EPOLL
-  if (params_.use_event_fd) {
-    event_fd_ = ::eventfd(0, 0);
-    if (event_fd_ < 0) {
-      return error::ErrnoToStatus(error::Errno())
-        << "Creating ::eventfd(..) file descriptor.";
-    }
-    RETURN_IF_ERROR(SetupNonBlocking(event_fd_))
-      << "For event file descriptor.";
-    signal_fd_ = event_fd_;
-    return status::UnimplementedErrorBuilder(
-        "Event FD not supported on this sytem");
-  } else {
-#endif  // HAVE_EPOLL
+  switch (params_.loop_type) {
+  case LoopType::POLL: {
     if (::pipe(signal_pipe_)) {
       return error::ErrnoToStatus(error::Errno())
         << "Creating ::pipe(..) file descriptors.";
@@ -65,30 +53,48 @@ absl::Status Selector::Initialize() {
       << "For pipe file descriptor 0.";
     RETURN_IF_ERROR(SetupNonBlocking(signal_pipe_[1]))
       << "For pipe file descriptor 1.";
-    signal_fd_ = signal_pipe_[0];
-#ifdef HAVE_EPOLL
-  }
-  if (params_.use_epoll) {
-    ASSIGN_OR_RETURN(loop_, EpollSelectorLoop::Create(
-        signal_fd_, params_.max_events_per_step),
-                     _ << "Creating the selector loop based on epoll.");
-  } else {
-#endif  // HAVE_EPOLL
-    ASSIGN_OR_RETURN(loop_, PollSelectorLoop::Create(signal_fd_),
+    output_signal_fd_ = signal_pipe_[0];
+    input_signal_fd_ = signal_pipe_[1];
+    ASSIGN_OR_RETURN(loop_, PollSelectorLoop::Create(output_signal_fd_),
                      _ << "Creating the selector loop based on poll.");
-#ifdef HAVE_EPOLL
+    break;
   }
-#endif // HAVE_EPOLL
+  case LoopType::EPOLL: {
+#ifdef __linux__
+    event_fd_ = ::eventfd(0, 0);
+    if (event_fd_ < 0) {
+      return error::ErrnoToStatus(error::Errno())
+        << "Creating ::eventfd(..) file descriptor.";
+    }
+    RETURN_IF_ERROR(SetupNonBlocking(event_fd_))
+      << "For event file descriptor.";
+    output_signal_fd_ = input_signal_fd_ = event_fd_;
+    ASSIGN_OR_RETURN(
+        loop_, EpollSelectorLoop::Create(
+            event_fd_, params.initial_capacity_,
+            params_.max_events_per_step),
+        _ << "Creating the selector loop based on epoll.");
+    break;
+#else
+    return status::UnimplementedErrorBuilder(
+        "epoll(...) not supported on this sytem");
+#endif  // __linux
+  }
+  case LoopType::KQUEUE:
+    return status::UnimplementedErrorBuilder(
+        "kqueue(..) not implemented on this sytem");
+  }
   return absl::OkStatus();
 }
 
 Selector::~Selector() {
   CHECK(registered_.empty());
-  if (params_.use_event_fd) {
-    close(event_fd_);
-  } else {
-    close(signal_pipe_[0]);
-    close(signal_pipe_[1]);
+  if (input_signal_fd_ >= 0) {
+    close(input_signal_fd_);
+  }
+  if (output_signal_fd_ != input_signal_fd_
+      && output_signal_fd_ > 0) {
+    close(output_signal_fd_);
   }
 }
 
@@ -200,27 +206,45 @@ absl::Status Selector::CleanAndCloseAll() {
   return absl::OkStatus();
 }
 
-size_t Selector::RunCallbacks(size_t max_num_to_run) {
-  // Clean some bytes from the signaling file descriptor.
+std::deque<std::function<void()>> Selector::PopCallbacks(
+    size_t max_num_to_run) {
+  std::deque<std::function<void()>> to_run;
+  if (!have_to_run_.load()) {
+    return to_run;
+  }
+  absl::MutexLock m(&to_run_mutex_);
+  while (max_num_to_run > 0u && !to_run_.empty()) {
+    to_run.emplace_back(to_run_.front());
+    to_run_.pop_front();
+    --max_num_to_run;
+  }
+  have_to_run_.store(!to_run_.empty());
+  return to_run;
+}
+
+void Selector::PrependCallbacks(
+    std::deque<std::function<void()>>* to_run) {
+  if (!to_run->empty()) {
+    absl::MutexLock m(&to_run_mutex_);
+    while (!to_run->empty()) {
+      to_run_.emplace_front(to_run->back());
+      to_run->pop_back();
+    }
+    have_to_run_.store(true);
+  }
+}
+
+void Selector::ClearSignalFd() {
   char buffer[512];
   int cb = 0;
-  while ((cb = ::read(signal_fd_, buffer, sizeof(buffer))) > 0) {
+  while ((cb = ::read(
+             output_signal_fd_, buffer, sizeof(buffer))) > 0) {
   }
-  std::deque<std::function<void()>> to_run;
-  {
-    absl::MutexLock m(&to_run_mutex_);
-    size_t num_to_run = std::min(max_num_to_run, to_run_.size());
-    std::move(to_run_.begin(), to_run.begin() + num_to_run,
-              std::back_inserter(to_run));
-    if (num_to_run == to_run_.size()) {
-      to_run_.clear();
-    } else {
-      for (size_t i = 0; i < num_to_run; ++i) {
-        to_run_.pop_front();
-      }
-    }
-    have_to_run_.store(!to_run_.empty());
-  }
+}
+
+size_t Selector::RunCallbacks(size_t max_num_to_run) {
+  ClearSignalFd();
+  std::deque<std::function<void()>> to_run = PopCallbacks(max_num_to_run);
   const absl::Time start_time = absl::Now();
   const absl::Time deadline = start_time + params_.callbacks_timeout_per_event;
   size_t num_run = 0;
@@ -229,34 +253,17 @@ size_t Selector::RunCallbacks(size_t max_num_to_run) {
     to_run.pop_front();
     ++num_run;
   }
-  if (!to_run.empty()) {
-    absl::MutexLock m(&to_run_mutex_);
-    while (!to_run.empty()) {
-      to_run_.emplace_front(std::move(to_run.back()));
-      to_run.pop_back();
-    }
-    have_to_run_.store(true);
-  }
+  PrependCallbacks(&to_run);
   return num_run;
 }
 
 void Selector::SendWakeSignal() {
-  if (params_.use_event_fd) {
-    uint64_t value = 1ULL;
-    const int cb = ::write(event_fd_, &value, sizeof(value));
-    if (ABSL_PREDICT_FALSE(cb < 0)) {
-      LOG_EVERY_N(WARNING, 1000)
-        << error::ErrnoToString(error::Errno())
-        << "Error writing a wake-up value to selector event file descriptor.";
-    }
-  } else {
-    int8_t byte = 0;
-    const int cb = ::write(signal_pipe_[1], &byte, sizeof(byte));
-    if (ABSL_PREDICT_FALSE(cb < 0)) {
-      LOG_EVERY_N(WARNING, 1000)
-        << error::ErrnoToString(error::Errno())
-        << "Error writing a wake-up value to selector pipe file descriptor.";
-    }
+  uint64_t value = 1ULL;
+  const int cb = ::write(input_signal_fd_, &value, sizeof(value));
+  if (ABSL_PREDICT_FALSE(cb < 0)) {
+    LOG_EVERY_N(WARNING, 1000)
+      << error::ErrnoToString(error::Errno())
+      << "Error writing a wake-up value to selector event file descriptor.";
   }
 }
 

@@ -14,17 +14,31 @@
 #ifdef __linux__
 #include <sys/poll.h>
 #include <sys/epoll.h>
+
 // We need this definde to a safe value anyway
 #ifndef EPOLLRDHUP
 #define EPOLLRDHUP 0
-#endif
+#endif  // EPOLLRDHUP
+
 #define HAVE_EPOLL
-#else
+
 #include <poll.h>
+
+#elif defined(__APPLE__)
+
+#include <sys/types.h>
+#include <sys/event.h>
+#include <sys/poll.h>
+#include <sys/time.h>
+
+// TODO(cpopescu): continue
+// #define HAVE_KQUEUE
+
+#endif  // __linux__
+
 #ifndef POLLRDHUP
 #define POLLRDHUP 0
-#endif
-#endif  // __linux
+#endif  // POLLRDHUP
 
 namespace whisper {
 namespace net {
@@ -84,16 +98,41 @@ private:
   absl::Status Initialize();
 
   const int signal_fd_;
-  const size_t max_events_per_step_;
 
   // Converts a Selector desire in some epoll flags.
   uint32_t DesiresToEpollEvents(uint32_t desires);
   // epoll file descriptor
   int epfd_;
   // here we get events that we poll
-  std::unique_ptr<struct epoll_event[]> events_;
+  std::vector<struct epoll_event> events_;
 };
 #endif  // HAVE_EPOLL
+
+#ifdef HAVE_KQUEUE
+class KQueueSelectorLoop {
+public:
+  static absl::StatusOr<std::unique_ptr<KQueueSelectorLoop>> Create(
+      int signal_fd, size_t max_events_per_step);
+  KQueueSelectorLoop(int signal_fd, size_t max_events_per_step);
+  virtual ~KQueueSelectorLoop() = default;
+
+  virtual absl::Status Add(int fd, void* user_data, uint32_t desires);
+  virtual absl::Status Update(int fd, void* user_data, uint32_t desires);
+  virtual absl::Status Delete(int fd) = 0;
+
+  virtual absl::StatusOr<std::vector<SelectorEventData>>
+  LoopStep(absl::Duration timeout);
+
+  virtual bool IsHangUpEvent(int event_value) const;
+  virtual bool IsRemoteHangUpEvent(int event_value) const;
+  virtual bool IsAnyHangUpEvent(int event_value) const;
+  virtual bool IsErrorEvent(int event_value) const;
+  virtual bool IsInputEvent(int event_value) const;
+
+private:
+  // TODO(cpopescu):  continue
+};
+#endif  // HAVE_KQUEUE
 
 
 // A selector loop implementation based on poll - available on most systems,
@@ -129,7 +168,7 @@ private:
   void Compact();
 
   static const size_t kMaxFds = 4096;
-  // epoll file descriptors
+  // poll file descriptors
   struct pollfd fds_[kMaxFds];
   // how many in fds are used in fds_
   size_t fds_size_ = 0;

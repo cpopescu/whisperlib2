@@ -66,3 +66,13 @@ cc_test(
         "@com_google_googletest//:gtest_main",
     ],
 )
+
+cc_test(
+    name = "selector_test",
+    srcs = ["selector_test.cc"],
+    deps = [
+        ":net",
+        "//whisperlib/status:testing",
+        "@com_google_googletest//:gtest_main",
+    ],
+)

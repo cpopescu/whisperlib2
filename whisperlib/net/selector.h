@@ -39,27 +39,29 @@ namespace net {
 //   });
 //
 class Selector {
-public:
+ public:
+  enum class LoopType {
+    POLL,    // uses poll(..) w/ pipe for signaling
+    EPOLL,   // uses epoll(..) w/ eventfd (Linux)
+    KQUEUE,  // uses kqueue w/ kevents and EVFILT_USER (MacOS/BSD)
+  };
+
   struct Params {
     // Maximum number of epoll I/O events to accept per loop step.
     size_t max_events_per_step = 128;
     // Maximum number of epoll I/O events to accept per loop step.
     size_t max_num_callbacks_per_event = 64;
+    // Initial capacity of the selectable pool.
+    size_t initial_capacity = 4096;
     // Maximum number of registered callbacks to run per each loop step.
     absl::Duration callbacks_timeout_per_event = absl::Seconds(1);
     // Default timeout to break a epoll / poll wait in case of no event.
     absl::Duration default_loop_timeout = absl::Seconds(1);
-    // Use event_fd linux API for signaling breaks in the select loop.
-    bool use_event_fd = true;
-    // Use epoll for the select loop (as opposed to poll).
-    bool use_epoll = true;
+    // Which type of loop type to use - system dependent.
+    LoopType loop_type = LoopType::POLL;
 
-    Params& set_use_event_fd(bool value) {
-      use_event_fd = value;
-      return *this;
-    }
-    Params& set_use_epoll(bool value) {
-      use_epoll = value;
+    Params& set_loop_type(LoopType value) {
+      loop_type = value;
       return *this;
     }
     Params& set_max_events_per_step(size_t value) {
@@ -72,6 +74,10 @@ public:
     }
     Params& set_callbacks_timeout_per_event(absl::Duration value) {
       callbacks_timeout_per_event = value;
+      return *this;
+    }
+    Params& set_initial_capacity(size_t value) {
+      initial_capacity = value;
       return *this;
     }
     Params& set_default_loop_timeout(absl::Duration value) {
@@ -177,6 +183,13 @@ private:
   size_t LoopAlarms();
   // Updates the now_ to current time.
   void UpdateNow();
+  // Pops some callbacks to be run from to_run_ queue.
+  std::deque<std::function<void()>> PopCallbacks(
+      size_t max_num_to_run);
+  // Prepends the callbacks in to_run to the internal to_run_ queue.
+  void PrependCallbacks(std::deque<std::function<void()>>* to_run);
+  // Cleans the bytes in the signaling file descriptor.
+  void ClearSignalFd();
 
   // Parameters for this selector
   Params params_;
@@ -194,7 +207,10 @@ private:
   int signal_pipe_[2] = {-1, -1};
   // The signal file descriptor registered in poll / epoll.
   // Can be either event_fd_ or signal_pipe_[0]
-  int signal_fd_ = -1;
+  int output_signal_fd_ = -1;
+  // The signal file descriptor used to pass events for signalling
+  // Can either be event_fd_ or signal_pope_[1]
+  int input_signal_fd_ = -1;
 
   // Our select loop - does poll / epoll etc on file descriptors.
   std::unique_ptr<SelectorLoop> loop_;
@@ -234,7 +250,7 @@ private:
 };
 
 class SelectorThread {
-public:
+ public:
   // Creates a *stopped* selector thread.
   static absl::StatusOr<std::unique_ptr<SelectorThread>>
   Create(Selector::Params params = {});
