@@ -175,6 +175,7 @@ genrule(
     outs = outs,
     cmd = build_cmd,
     message = "Building OpenSSL libraries and headers",
+    visibility = ["//visibility:public"],
 )
 
 cc_library(

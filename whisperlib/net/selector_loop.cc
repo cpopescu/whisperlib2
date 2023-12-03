@@ -110,21 +110,20 @@ EpollSelectorLoop::LoopStep(absl::Duration timeout) {
   }
   std::vector<SelectorEventData> events;
   events.reserve(num_events);
-  struct epoll_event* event = events_.get();
   for (int i = 0; i < num_events; ++i) {
+    const struct epoll_event& event = events_[i];
     uint32_t desire = 0;
-    if (event->events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
+    if (event.events & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
       desire |= SelectDesire::kWantError;
     }
-    if (event->events & (EPOLLIN | EPOLLPRI)) {
+    if (event.events & (EPOLLIN | EPOLLPRI)) {
       desire |= SelectDesire::kWantRead;
     }
-    if (event->events & EPOLLOUT) {
+    if (event.events & EPOLLOUT) {
       desire |= SelectDesire::kWantWrite;
     }
     events.push_back(SelectorEventData {
-        event->data.ptr, desire, event->events });
-    ++event;
+        event.data.ptr, desire, event.events });
   }
   return events;
 }

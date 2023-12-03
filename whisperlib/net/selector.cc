@@ -71,8 +71,7 @@ absl::Status Selector::Initialize() {
     output_signal_fd_ = input_signal_fd_ = event_fd_;
     ASSIGN_OR_RETURN(
         loop_, EpollSelectorLoop::Create(
-            event_fd_, params.initial_capacity_,
-            params_.max_events_per_step),
+            event_fd_, params_.max_events_per_step),
         _ << "Creating the selector loop based on epoll.");
     break;
 #else

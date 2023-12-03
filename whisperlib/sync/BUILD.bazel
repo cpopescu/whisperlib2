@@ -1,18 +1,28 @@
-load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_library")
 
 cc_library(
     name = "sync",
+    srcs = [
+        "thread.cc",
+    ],
     hdrs = [
         "producer_consumer_queue.h",
         "producer_consumer_queue_lockfree.h",
+        "thread.h",
     ],
     visibility = ["//visibility:public"],
     deps = [
-        "//whisperlib/base",
         "//whisperlib/status",
+        "//whisperlib/sync/moody",
         "@com_google_absl//absl/base:core_headers",
+        "@com_google_absl//absl/functional:any_invocable",
+        "@com_google_absl//absl/functional:bind_front",
+        "@com_google_absl//absl/log:die_if_null",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
+        "@com_google_absl//absl/types:optional",
     ],
 )
 
@@ -20,7 +30,11 @@ cc_test(
     name = "producer_consumer_queue_test",
     srcs = ["producer_consumer_queue_test.cc"],
     deps = [
-        ":sync",
+        "//whisperlib/sync",
+        "//whisperlib/sync/moody",
+        "//whisperlib/status:testing",
+        "@com_google_absl//absl/functional:bind_front",
         "@com_google_googletest//:gtest_main",
     ],
 )
+

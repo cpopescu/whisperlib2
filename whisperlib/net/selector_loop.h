@@ -93,7 +93,7 @@ public:
   bool IsInputEvent(int event_value) const override;
 
 private:
-  EpollSelectorLoop(int signal_fd, int max_events_per_step);
+  EpollSelectorLoop(int signal_fd, size_t max_events_per_step);
 
   absl::Status Initialize();
 

@@ -1,3 +1,11 @@
+startup --batch_cpu_scheduling --io_nice_level 7
+build --jobs HOST_CPUS --local_ram_resources=HOST_RAM*0.5
+
+build --enable_platform_specific_config
+build:macos --apple_crosstool_top=@local_config_apple_cc//:toolchain
+build:macos --crosstool_top=@local_config_apple_cc//:toolchain
+build:macos --host_crosstool_top=@local_config_apple_cc//:toolchain
+
 build --cxxopt='-std=c++17'
 build --javacopt="--release 8"
 build --host_cxxopt='-std=c++17'

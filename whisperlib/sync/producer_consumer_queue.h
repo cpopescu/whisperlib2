@@ -2,47 +2,46 @@
 #define WHISPERLIB_SYNC_PRODUCER_CONSUMER_QUEUE_H_
 
 #include <deque>
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include "absl/base/thread_annotations.h"
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
-// #include "whisperlib/base/call_on_return.h"
+#include "absl/types/optional.h"
 #include "whisperlib/status/status.h"
 
 namespace whisper {
 namespace synch {
 
-template<typename C>
+template <typename C>
 class ProducerConsumerQueue {
  public:
   // Creates a ProducerConsumerQueue with a maximum size.
   // Normally we have a FIFO policy, but if fifo_policy is false, we
   // employ a lifo policy.
   explicit ProducerConsumerQueue(size_t max_size, bool fifo_policy = true)
-    : max_size_(max_size), fifo_policy_(fifo_policy) {}
+      : max_size_(max_size), fifo_policy_(fifo_policy) {}
 
   // Places a datum into the queue. If timeout is not infinite, we bail out when
   // the queue has no empty space after that duration, and return false.
-  bool Put(C c, absl::Duration timeout = absl::InfiniteDuration())
-    ABSL_LOCKS_EXCLUDED(mutex_) {
+  absl::optional<C> Put(C c, absl::Duration timeout = absl::InfiniteDuration())
+      ABSL_LOCKS_EXCLUDED(mutex_) {
     return PutAt(std::move(c), timeout, !fifo_policy_);
   }
   // Places a datum into the queue, possibly at the front of the queue.
   // If timeout is not infinite, we bail out when the queue has no empty
   // space after that duration, and return false.
-  bool PutAt(C c, absl::Duration timeout = absl::InfiniteDuration(),
-             bool at_front = false)
-    ABSL_LOCKS_EXCLUDED(mutex_) {
+  absl::optional<C> PutAt(C c,
+                          absl::Duration timeout = absl::InfiniteDuration(),
+                          bool at_front = false) ABSL_LOCKS_EXCLUDED(mutex_) {
     absl::MutexLock l(&mutex_);
-    // mutex_.Lock();
-    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasEmptySpace()) {
-      mutex_.AwaitWithTimeout(absl::Condition(
-          this, &ProducerConsumerQueue<C>::HasEmptySpace), timeout);
+      mutex_.AwaitWithTimeout(
+          absl::Condition(this, &ProducerConsumerQueue<C>::HasEmptySpace),
+          timeout);
       if (!HasEmptySpace()) {
-        return false;
+        return absl::optional<C>(std::move(c));
       }
     }
     if (at_front) {
@@ -50,16 +49,13 @@ class ProducerConsumerQueue {
     } else {
       data_.emplace_back(std::move(c));
     }
-    return true;
+    return {};
   }
   // Returns the first available element at the front of the queue.
   ABSL_MUST_USE_RESULT C Get() ABSL_LOCKS_EXCLUDED(mutex_) {
     absl::MutexLock l(&mutex_);
-    // mutex_.Lock();
-    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasData()) {
-      mutex_.Await(absl::Condition(
-          this, &ProducerConsumerQueue<C>::HasData));
+      mutex_.Await(absl::Condition(this, &ProducerConsumerQueue<C>::HasData));
     }
     C result = std::move(data_.front());
     data_.pop_front();
@@ -70,13 +66,11 @@ class ProducerConsumerQueue {
   // If none is available, we return false.
   ABSL_MUST_USE_RESULT bool TryGet(
       C* c, absl::Duration timeout = absl::ZeroDuration())
-    ABSL_LOCKS_EXCLUDED(mutex_) {
+      ABSL_LOCKS_EXCLUDED(mutex_) {
     absl::MutexLock l(&mutex_);
-    // mutex_.Lock();
-    // base::CallOnReturn unlock([this]() { mutex_.Unlock(); });
     if (!HasData()) {
-      mutex_.AwaitWithTimeout(absl::Condition(
-          this, &ProducerConsumerQueue<C>::HasData), timeout);
+      mutex_.AwaitWithTimeout(
+          absl::Condition(this, &ProducerConsumerQueue<C>::HasData), timeout);
       if (!HasData()) {
         return false;
       }
