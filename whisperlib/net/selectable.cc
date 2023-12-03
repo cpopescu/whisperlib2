@@ -1,7 +1,7 @@
 #include "whisperlib/net/selectable.h"
 
-#include <unistd.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #include "whisperlib/base/call_on_return.h"
 #include "whisperlib/io/cord_io.h"
@@ -11,16 +11,10 @@
 namespace whisper {
 namespace net {
 
-Selectable::Selectable(Selector* selector)
-  : selector_(selector) {
-}
+Selectable::Selectable(Selector* selector) : selector_(selector) {}
 
-const Selector* Selectable::selector() const {
-  return selector_;
-}
-Selector* Selectable::selector() {
-  return selector_;
-}
+const Selector* Selectable::selector() const { return selector_; }
+Selector* Selectable::selector() { return selector_; }
 void Selectable::set_selector(Selector* value) {
   CHECK(selector_ == nullptr || value == nullptr);
   selector_ = value;
@@ -36,7 +30,7 @@ absl::StatusOr<size_t> Selectable::Write(const char* buffer, size_t size) {
     return 0;
   }
   return error::ErrnoToStatus(write_error)
-    << "Writing data to file descriptor: " << GetFd() << " size: " << size;
+         << "Writing data to file descriptor: " << GetFd() << " size: " << size;
 }
 
 absl::StatusOr<size_t> Selectable::Read(char* buffer, size_t size) {
@@ -49,22 +43,26 @@ absl::StatusOr<size_t> Selectable::Read(char* buffer, size_t size) {
     return 0;
   }
   return error::ErrnoToStatus(read_error)
-    << "Reading data to file descriptor: " << GetFd() << " size: " << size;
+         << "Reading data to file descriptor: " << GetFd() << " size: " << size;
 }
 
 absl::StatusOr<size_t> Selectable::ReadToCord(absl::Cord* cord, size_t len) {
   char* buffer = new char[len];
-  base::CallOnReturn clear_buffer([buffer]() { delete [] buffer; });
+  base::CallOnReturn clear_buffer([buffer]() { delete[] buffer; });
   ASSIGN_OR_RETURN(size_t cb, Read(buffer, len));
-  if (cb == 0) { return 0; }
-  cord->Append(absl::MakeCordFromExternal(
-      absl::string_view(buffer, cb), clear_buffer.reset()));
+  if (cb == 0) {
+    return 0;
+  }
+  cord->Append(absl::MakeCordFromExternal(absl::string_view(buffer, cb),
+                                          clear_buffer.reset()));
   return cb;
 }
 
 absl::StatusOr<size_t> Selectable::WriteCord(const absl::Cord& cord,
                                              absl::optional<size_t> size) {
-  if (cord.empty()) { return 0; }
+  if (cord.empty()) {
+    return 0;
+  }
   const size_t size_to_write = io::CordIo::SizeToWrite(cord, size);
   size_t cb = 0;
   for (absl::string_view chunk : cord.Chunks()) {
@@ -81,13 +79,15 @@ absl::StatusOr<size_t> Selectable::WriteCord(const absl::Cord& cord,
   return cb;
 }
 
-absl::StatusOr<size_t> Selectable::WriteCordVec(
-    const absl::Cord& cord, absl::optional<size_t> size) {
-  if (cord.empty()) { return 0; }
+absl::StatusOr<size_t> Selectable::WriteCordVec(const absl::Cord& cord,
+                                                absl::optional<size_t> size) {
+  if (cord.empty()) {
+    return 0;
+  }
   const size_t size_to_write = io::CordIo::SizeToWrite(cord, size);
   auto io_vec_pair = io::CordIo::ToIovec(cord, size_to_write);
-  const ssize_t cb = ::writev(
-      GetFd(), &io_vec_pair.first[0], io_vec_pair.second);
+  const ssize_t cb =
+      ::writev(GetFd(), &io_vec_pair.first[0], io_vec_pair.second);
 
   if (ABSL_PREDICT_FALSE(cb < 0)) {
     const int write_error = error::Errno();
@@ -95,8 +95,8 @@ absl::StatusOr<size_t> Selectable::WriteCordVec(
       return 0;
     }
     return error::ErrnoToStatus(error::Errno())
-      << "Writing data to file descriptor with writeev: " << GetFd()
-      << " size: " << size_to_write;
+           << "Writing data to file descriptor with writeev: " << GetFd()
+           << " size: " << size_to_write;
   }
   return cb;
 }

@@ -7,8 +7,8 @@
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/strings/string_view.h"
-#include "openssl/ssl.h"
 #include "openssl/err.h"
+#include "openssl/ssl.h"
 #include "whisperlib/net/address.h"
 #include "whisperlib/net/connection.h"
 
@@ -16,7 +16,7 @@ namespace whisper {
 namespace net {
 
 class SslUtils {
-public:
+ public:
   static absl::string_view SslErrorName(int err);
   static absl::string_view SslWantName(int want);
   // Returns a description of the last SSL error. This function pops error
@@ -27,12 +27,12 @@ public:
 
   // Returns a new X509 structure, or NULL on failure.
   // You have to call X509_free(..) on the valid result.
-  static absl::StatusOr<X509*>
-  SslLoadCertificateFile(absl::string_view filename);
+  static absl::StatusOr<X509*> SslLoadCertificateFile(
+      absl::string_view filename);
   // Returns a new EVP_PKEY structure, or NULL on failure.
   // You have to call EVP_PKEY_free(..) on the valid result.
-  static absl::StatusOr<EVP_PKEY*>
-  SslLoadPrivateKeyFile(absl::string_view filename);
+  static absl::StatusOr<EVP_PKEY*> SslLoadPrivateKeyFile(
+      absl::string_view filename);
 
   // Clone X509. Never fail. Use X509_free(..).
   // static X509* SslDuplicateX509(const X509& src);
@@ -119,14 +119,10 @@ class SslConnection : public Connection {
 
   // Used from the depth of the ssl verification callback to set the
   // verification status failed
-  void SslSetVerificationFailed() {
-    verification_failed_.store(true);
-  }
-  static int SslVerificationIndex() {
-    return verification_index_.load();
-  }
+  void SslSetVerificationFailed() { verification_failed_.store(true); }
+  static int SslVerificationIndex() { return verification_index_.load(); }
 
-private:
+ private:
   // Use an already established tcp connection. Usually obtained by an acceptor.
   // We take ownership of tcp_connection.
   void Wrap(std::unique_ptr<TcpConnection> tcp_connection);
@@ -136,8 +132,8 @@ private:
   void TcpConnectionConnectHandler();
   absl::Status TcpConnectionReadHandler();
   absl::Status TcpConnectionWriteHandler();
-  void TcpConnectionCloseHandler(
-      const absl::Status& status, Connection::CloseDirective directive);
+  void TcpConnectionCloseHandler(const absl::Status& status,
+                                 Connection::CloseDirective directive);
   // Sets the above handlers to the underlying tcp connection.
   void SetTcpConnectionHandlers();
 
@@ -185,7 +181,7 @@ private:
 
   // for debug, count output/input bytes
   std::atomic_uint64_t ssl_out_count_ = ATOMIC_VAR_INIT(0);
-  std::atomic_uint64_t ssl_in_count_  = ATOMIC_VAR_INIT(0);
+  std::atomic_uint64_t ssl_in_count_ = ATOMIC_VAR_INIT(0);
 
   // If the ssl verification failed:
   std::atomic_bool verification_failed_ = ATOMIC_VAR_INIT(false);

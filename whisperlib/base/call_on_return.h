@@ -10,10 +10,8 @@ namespace base {
 class CallOnReturn {
  public:
   explicit CallOnReturn(std::function<void()> on_return)
-    : on_return_(std::move(on_return)) {}
-  ~CallOnReturn() {
-    run();
-  }
+      : on_return_(std::move(on_return)) {}
+  ~CallOnReturn() { run(); }
   void run() {
     if (on_return_ != nullptr) {
       on_return_();
@@ -25,6 +23,7 @@ class CallOnReturn {
     on_return_ = nullptr;
     return on_return;
   }
+
  private:
   std::function<void()> on_return_;
 };

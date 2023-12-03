@@ -64,7 +64,7 @@ class Thread {
   const absl::optional<size_t> stack_size_;
   const bool joinable_;
   const bool low_priority_;
-  pthread_t thread_id_ {};
+  pthread_t thread_id_{};
   pthread_attr_t attr_;
   bool attr_created_ = false;
 };

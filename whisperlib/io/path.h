@@ -2,6 +2,7 @@
 #define WHISPERLIB_IO_PATH_H_
 
 #include <string>
+
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 
@@ -9,30 +10,27 @@ namespace whisper {
 namespace path {
 
 #if defined _WIN32 && !defined(DIR_SEPARATOR)
-#  define DIR_SEPARATOR               '\\'
+#define DIR_SEPARATOR '\\'
 #endif
 
 #ifndef DIR_SEPARATOR
-#  define DIR_SEPARATOR               '/'
+#define DIR_SEPARATOR '/'
 #endif
 
 static constexpr char kDirSeparator = DIR_SEPARATOR;
-static constexpr char kDirSeparatorStr[] = { DIR_SEPARATOR, '\0' };
+static constexpr char kDirSeparatorStr[] = {DIR_SEPARATOR, '\0'};
 
 absl::string_view Basename(absl::string_view path);
 absl::string_view Dirname(absl::string_view path);
 
-std::string Join(absl::string_view path1,
-                 absl::string_view path2,
+std::string Join(absl::string_view path1, absl::string_view path2,
                  char path_sepparator);
 
-inline std::string Join(absl::string_view path1,
-                        absl::string_view path2) {
+inline std::string Join(absl::string_view path1, absl::string_view path2) {
   return Join(path1, path2, kDirSeparator);
 }
 
-inline std::string Join(absl::string_view path1,
-                        absl::string_view path2,
+inline std::string Join(absl::string_view path1, absl::string_view path2,
                         absl::string_view path3) {
   return Join(Join(path1, path2), path3);
 }

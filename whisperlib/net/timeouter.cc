@@ -6,12 +6,10 @@ namespace whisper {
 namespace net {
 
 Timeouter::Timeouter(Selector* selector, TimeoutCallback callback)
-  : selector_(ABSL_DIE_IF_NULL(selector)),
-    callback_(ABSL_DIE_IF_NULL(callback)) {}
+    : selector_(ABSL_DIE_IF_NULL(selector)),
+      callback_(ABSL_DIE_IF_NULL(callback)) {}
 
-Timeouter::~Timeouter() {
-  ClearAllTimeouts();
-}
+Timeouter::~Timeouter() { ClearAllTimeouts(); }
 
 void Timeouter::SetTimeout(TimeoutId timeout_id, absl::Duration timeout) {
   auto callback = [this, timeout_id]() { ProcessTimeout(timeout_id); };
@@ -21,8 +19,8 @@ void Timeouter::SetTimeout(TimeoutId timeout_id, absl::Duration timeout) {
     selector_->UnregisterAlarm(it->second);
     it->second = selector_->RegisterAlarm(std::move(callback), timeout);
   } else {
-    timeouts_.emplace(timeout_id, selector_->RegisterAlarm(
-        std::move(callback), timeout));
+    timeouts_.emplace(timeout_id,
+                      selector_->RegisterAlarm(std::move(callback), timeout));
   }
 }
 

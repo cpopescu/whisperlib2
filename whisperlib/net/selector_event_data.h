@@ -9,7 +9,7 @@ namespace net {
 // The operations desired to be watched / performed on a file descriptor
 // registered with a select loop.
 struct SelectDesire {
-  static constexpr uint32_t kWantRead  = 1;
+  static constexpr uint32_t kWantRead = 1;
   static constexpr uint32_t kWantWrite = 2;
   static constexpr uint32_t kWantError = 4;
 };
@@ -27,7 +27,7 @@ struct SelectorEventData {
 };
 
 static constexpr int kInvalidFdValue = -1;
-}  // namespace whisperlib
 }  // namespace net
+}  // namespace whisper
 
 #endif  // WHISPERLIB_NET_SELECTOR_EVENT_DATA_H_

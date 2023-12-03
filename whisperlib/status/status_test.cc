@@ -1,4 +1,5 @@
 #include "whisperlib/status/status.h"
+
 #include "whisperlib/status/testing.h"
 
 absl::Status F(bool make_error, absl::string_view message = "") {
@@ -40,9 +41,8 @@ namespace whisper {
 namespace status {
 
 TEST(Status, Anootate) {
-  EXPECT_RAISES_WITH_MESSAGE(
-    Annotate(absl::NotFoundError("A"), "B"), NotFound,
-    "NOT_FOUND: A; B");
+  EXPECT_RAISES_WITH_MESSAGE(Annotate(absl::NotFoundError("A"), "B"), NotFound,
+                             "NOT_FOUND: A; B");
   {
     absl::Status status = absl::NotFoundError("A");
     status.SetPayload("Y", absl::Cord("X_Y"));
@@ -52,15 +52,15 @@ TEST(Status, Anootate) {
   {
     absl::Status ok_status = absl::OkStatus();
     EXPECT_OK(UpdateOrAnnotate(ok_status, absl::OkStatus()));
-    EXPECT_RAISES_WITH_MESSAGE(UpdateOrAnnotate(ok_status,
-                                                absl::InternalError("B")),
-                               Internal, "INTERNAL: B");
+    EXPECT_RAISES_WITH_MESSAGE(
+        UpdateOrAnnotate(ok_status, absl::InternalError("B")), Internal,
+        "INTERNAL: B");
   }
   {
     absl::Status status = absl::NotFoundError("A");
-    EXPECT_RAISES_WITH_MESSAGE(UpdateOrAnnotate(status,
-                                                absl::InternalError("B")),
-                               NotFound, "NOT_FOUND: A; B");
+    EXPECT_RAISES_WITH_MESSAGE(
+        UpdateOrAnnotate(status, absl::InternalError("B")), NotFound,
+        "NOT_FOUND: A; B");
   }
   {
     absl::Status status = absl::NotFoundError("A");

@@ -15,8 +15,8 @@ namespace net {
 int ExtractSocketErrno(int fd) {
   int err = 0;
   socklen_t len = sizeof(err);
-  if (ABSL_PREDICT_FALSE(
-          ::getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) < 0)) {
+  if (ABSL_PREDICT_FALSE(::getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) <
+                         0)) {
     return errno;
   }
   return err;
@@ -31,8 +31,8 @@ sockaddr* AsSockAddr(sockaddr_storage* addr) {
   return reinterpret_cast<sockaddr*>(addr);
 }
 size_t SockAddrLen(const sockaddr_storage& addr) {
-  return addr.ss_family == AF_INET
-    ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+  return addr.ss_family == AF_INET ? sizeof(struct sockaddr_in)
+                                   : sizeof(struct sockaddr_in6);
 }
 
 Acceptor::~Acceptor() {
@@ -43,14 +43,15 @@ Acceptor::~Acceptor() {
 
 absl::string_view Acceptor::StateName(Acceptor::State s) {
   switch (s) {
-  case DISCONNECTED: return "DISCONNECTED";
-  case LISTENING: return "LISTENING";
-  default: return "UNKNOWN";
+    case DISCONNECTED:
+      return "DISCONNECTED";
+    case LISTENING:
+      return "LISTENING";
+    default:
+      return "UNKNOWN";
   }
 }
-Acceptor::State Acceptor::state() const {
-  return state_.load();
-}
+Acceptor::State Acceptor::state() const { return state_.load(); }
 absl::string_view Acceptor::state_name() const {
   return Acceptor::StateName(state());
 }
@@ -62,9 +63,7 @@ absl::Status Acceptor::last_error() const {
   absl::ReaderMutexLock l(&mutex_);
   return last_error_;
 }
-void Acceptor::set_state(State value) {
-  state_.store(value);
-}
+void Acceptor::set_state(State value) { state_.store(value); }
 void Acceptor::set_local_address(HostPort value) {
   absl::WriterMutexLock l(&mutex_);
   local_address_ = std::move(value);
@@ -72,7 +71,7 @@ void Acceptor::set_local_address(HostPort value) {
 void Acceptor::set_last_error(const absl::Status& value) {
   if (!value.ok()) {
     LOG_IF(WARNING, detail_log_)
-      << ToString() << " - Updating error to: " << value;
+        << ToString() << " - Updating error to: " << value;
     absl::WriterMutexLock l(&mutex_);
     status::UpdateOrAnnotate(last_error_, value);
   }
@@ -111,17 +110,16 @@ void Acceptor::CallAcceptHandler(std::unique_ptr<Connection> new_connection) {
     accept_handler_(std::move(new_connection));
   } else {
     LOG_IF(WARNING, detail_log_)
-      << ToString() << " - No accept handler provided for connection: "
-      << new_connection->ToString() << " - will be dropped.";
+        << ToString() << " - No accept handler provided for connection: "
+        << new_connection->ToString() << " - will be dropped.";
     LOG_EVERY_N(WARNING, 500)
-      << ToString() << " - No accept handler provided for connection: "
-      << new_connection->ToString() << " - will be dropped.";
+        << ToString() << " - No accept handler provided for connection: "
+        << new_connection->ToString() << " - will be dropped.";
     auto pconnection = new_connection.release();
-    pconnection->net_selector()->RunInSelectLoop(
-        [pconnection]() {
-          pconnection->ForceClose();
-          delete pconnection;
-        });
+    pconnection->net_selector()->RunInSelectLoop([pconnection]() {
+      pconnection->ForceClose();
+      delete pconnection;
+    });
   }
 }
 void Acceptor::CallCloseHandler(const absl::Status& status) {
@@ -130,38 +128,40 @@ void Acceptor::CallCloseHandler(const absl::Status& status) {
   }
 }
 
-
 absl::string_view Connection::StateName(State value) {
   switch (value) {
-  case DISCONNECTED: return "DISCONNECTED";
-  case RESOLVING: return "RESOLVING";
-  case CONNECTING: return "CONNECTING";
-  case CONNECTED: return "CONNECTED";
-  case FLUSHING: return "FLUSHING";
-  default: return "UNKNOWN";
+    case DISCONNECTED:
+      return "DISCONNECTED";
+    case RESOLVING:
+      return "RESOLVING";
+    case CONNECTING:
+      return "CONNECTING";
+    case CONNECTED:
+      return "CONNECTED";
+    case FLUSHING:
+      return "FLUSHING";
+    default:
+      return "UNKNOWN";
   }
 }
 absl::string_view Connection::CloseDirectiveName(CloseDirective value) {
   switch (value) {
-  case CLOSE_READ: return "CLOSE_READ";
-  case CLOSE_WRITE: return "CLOSE_WRITE";
-  case CLOSE_READ_WRITE: return "CLOSE_READ_WRITE";
-  default: return "UNKNOWN";
+    case CLOSE_READ:
+      return "CLOSE_READ";
+    case CLOSE_WRITE:
+      return "CLOSE_WRITE";
+    case CLOSE_READ_WRITE:
+      return "CLOSE_READ_WRITE";
+    default:
+      return "UNKNOWN";
   }
 }
 
-Connection::Connection(Selector* net_selector)
-  : net_selector_(net_selector) {}
+Connection::Connection(Selector* net_selector) : net_selector_(net_selector) {}
 
-const Selector* Connection::net_selector() const {
-  return net_selector_;
-}
-Selector* Connection::net_selector() {
-  return net_selector_;
-}
-Connection::State Connection::state() const {
-  return state_.load();
-}
+const Selector* Connection::net_selector() const { return net_selector_; }
+Selector* Connection::net_selector() { return net_selector_; }
+Connection::State Connection::state() const { return state_.load(); }
 absl::string_view Connection::state_name() const {
   return Connection::StateName(state());
 }
@@ -175,12 +175,8 @@ int64_t Connection::count_bytes_written() const {
 int64_t Connection::count_bytes_read() const {
   return count_bytes_read_.load();
 }
-absl::Cord* Connection::inbuf() {
-  return &inbuf_;
-}
-absl::Cord* Connection::outbuf() {
-  return &outbuf_;
-}
+absl::Cord* Connection::inbuf() { return &inbuf_; }
+absl::Cord* Connection::outbuf() { return &outbuf_; }
 
 Connection& Connection::set_connect_handler(ConnectHandler handler) {
   connect_handler_ = std::move(handler);
@@ -243,13 +239,11 @@ void Connection::set_net_selector(Selector* value) {
   CHECK(net_selector_ == nullptr);
   net_selector_ = value;
 }
-void Connection::set_state(State value) {
-  state_.store(value);
-}
+void Connection::set_state(State value) { state_.store(value); }
 void Connection::set_last_error(const absl::Status& value) {
   if (!value.ok()) {
     LOG_IF(WARNING, detail_log_)
-      << ToString() << " - Updating error to: " << value;
+        << ToString() << " - Updating error to: " << value;
     absl::MutexLock l(&mutex_);
     status::UpdateOrAnnotate(last_error_, value);
   }
@@ -266,18 +260,18 @@ void Connection::CallConnectHandler() {
     connect_handler_();
   } else {
     LOG_EVERY_N(WARNING, 500)
-      << "Connect handler not set for connection: " << ToString();
+        << "Connect handler not set for connection: " << ToString();
   }
 }
 
 absl::Status Connection::CallReadHandler() {
   RET_CHECK(read_handler_ != nullptr)
-    << "No read handler set for connection: " << ToString();
+      << "No read handler set for connection: " << ToString();
   return read_handler_();
 }
 absl::Status Connection::CallWriteHandler() {
   RET_CHECK(write_handler_ != nullptr)
-    << "No write handler set for connection: " << ToString();
+      << "No write handler set for connection: " << ToString();
   return write_handler_();
 }
 void Connection::CallCloseHandler(const absl::Status& err,
@@ -349,60 +343,61 @@ Selector* AcceptorThreads::GetNextSelector() {
   if (ABSL_PREDICT_FALSE(client_threads_.empty())) {
     return nullptr;
   }
-  return client_threads_[next_client_thread_.fetch_add(1)
-                         % client_threads_.size()]->selector();
+  return client_threads_[next_client_thread_.fetch_add(1) %
+                         client_threads_.size()]
+      ->selector();
 }
 
 TcpAcceptor::TcpAcceptor(Selector* selector, TcpAcceptorParams params)
-  : Acceptor(), Selectable(ABSL_DIE_IF_NULL(selector)),
-    params_(std::move(params)) {
+    : Acceptor(),
+      Selectable(ABSL_DIE_IF_NULL(selector)),
+      params_(std::move(params)) {
   detail_log_ = params_.detail_log;
 }
 TcpAcceptor::~TcpAcceptor() {
-  CHECK_EQ(state(), DISCONNECTED)
-    << "Can only delete disconnected acceptors.";
+  CHECK_EQ(state(), DISCONNECTED) << "Can only delete disconnected acceptors.";
   CHECK_EQ(fd_.load(), kInvalidFdValue);
 }
 
-const TcpAcceptor::Statistics& TcpAcceptor::stats() const {
-  return stats_;
-}
+const TcpAcceptor::Statistics& TcpAcceptor::stats() const { return stats_; }
 
 absl::Status TcpAcceptor::Listen(const HostPort& local_addr) {
   RET_CHECK(fd_ == kInvalidFdValue)
-    << "Attempting listening again, with valid socket: " << ToString();
+      << "Attempting listening again, with valid socket: " << ToString();
   RET_CHECK(state() == DISCONNECTED)
-    << "Attempting listening on non-disconnected acceptor: " << ToString();
+      << "Attempting listening on non-disconnected acceptor: " << ToString();
 
   struct sockaddr_storage addr;
   RETURN_IF_ERROR(local_addr.ToSockAddr(&addr))
-    << "Setting listening address for TCP acceptor";
+      << "Setting listening address for TCP acceptor";
 
   // create socket
   const int fd = ::socket(addr.ss_family, SOCK_STREAM, 0);
   if (fd_ < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::socket failed for: " << ToString();
+           << "::socket failed for: " << ToString();
   }
   fd_.store(fd);
   base::CallOnReturn close_fd([this]() {
     if (::close(fd_.load())) {
-      LOG(WARNING) << ToString() << " - ::close failed for Listen  error. "
-        "Close error: " << error::ErrnoToString(error::Errno());
+      LOG(WARNING) << ToString()
+                   << " - ::close failed for Listen  error. "
+                      "Close error: "
+                   << error::ErrnoToString(error::Errno());
     }
     fd_.store(kInvalidFdValue);
   });
   RETURN_IF_ERROR(SetSocketOptions());
   if (::bind(fd_.load(), AsSockAddr(&addr), SockAddrLen(addr)) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::bind failed for: " << ToString();
+           << "::bind failed for: " << ToString();
   }
   if (::listen(fd_, params_.max_backlog)) {
     return error::ErrnoToStatus(error::Errno())
-      << "::listen failed for: " << ToString();
+           << "::listen failed for: " << ToString();
   }
   RETURN_IF_ERROR(selector()->Register(this))
-    << "Registering acceptor with selector for: " << ToString();
+      << "Registering acceptor with selector for: " << ToString();
 
   // Initialize local address from socket.
   // In case the user supplied port 0 we learn the system chosen port now.
@@ -424,14 +419,11 @@ void TcpAcceptor::Close() {
 }
 
 std::string TcpAcceptor::ToString() const {
-  return absl::StrCat(
-      "TcpAcceptor [ ", local_address().ToString(),
-      " state: ", state_name(), " fd: ", fd_.load(), " ]");
+  return absl::StrCat("TcpAcceptor [ ", local_address().ToString(),
+                      " state: ", state_name(), " fd: ", fd_.load(), " ]");
 }
 
-int TcpAcceptor::GetFd() const {
-  return fd_.load();
-}
+int TcpAcceptor::GetFd() const { return fd_.load(); }
 
 bool TcpAcceptor::HandleReadEvent(SelectorEventData event) {
   CHECK(selector()->IsInSelectThread());
@@ -452,7 +444,7 @@ bool TcpAcceptor::HandleReadEvent(SelectorEventData event) {
   }
   base::CallOnReturn close_fd([client_fd]() { ::close(client_fd); });
   auto host_port_result =
-    HostPort::ParseFromSockAddr(AsSockAddr(&addr), SockAddrLen(addr));
+      HostPort::ParseFromSockAddr(AsSockAddr(&addr), SockAddrLen(addr));
   if (!host_port_result.ok()) {
     LOG(WARNING) << "Cannot parse remote address from sockaddr: "
                  << host_port_result.status() << " - closing connection.";
@@ -467,15 +459,15 @@ bool TcpAcceptor::HandleReadEvent(SelectorEventData event) {
   }
   close_fd.reset();
   stats_.connections_accept_scheduled.fetch_add(1);
-  LOG_IF(INFO, detail_log_) << ToString() << " - connection accepted from: "
-                            << host_port_result.value().ToString();
+  LOG_IF(INFO, detail_log_)
+      << ToString()
+      << " - connection accepted from: " << host_port_result.value().ToString();
 
   Selector* const selector_to_use = params_.acceptor_threads.GetNextSelector();
-  if (selector_to_use != nullptr ) {
-    selector_to_use->RunInSelectLoop(
-        [this, selector_to_use, client_fd]() {
-          InitializeAcceptedConnection(selector_to_use, client_fd);
-        });
+  if (selector_to_use != nullptr) {
+    selector_to_use->RunInSelectLoop([this, selector_to_use, client_fd]() {
+      InitializeAcceptedConnection(selector_to_use, client_fd);
+    });
   } else {
     InitializeAcceptedConnection(selector_, client_fd);
   }
@@ -492,7 +484,7 @@ bool TcpAcceptor::HandleErrorEvent(SelectorEventData event) {
   const int value = event.internal_event;
   if (selector()->IsAnyHangUpEvent(value)) {  // "HUP on server socket"
     LOG_IF(INFO, detail_log_)
-      << ToString() << " - Hang up event received on server socket.";
+        << ToString() << " - Hang up event received on server socket.";
     stats_.hang_ups_handled.fetch_add(1);
     return true;  // continue accepting
   }
@@ -501,8 +493,8 @@ bool TcpAcceptor::HandleErrorEvent(SelectorEventData event) {
     stats_.errors_handled.fetch_add(1);
     InternalClose(error::ErrnoToStatus(err)
                   << " - error detected on accept socket for: " << ToString());
-    return false;   // closing the acceptor
-    }
+    return false;  // closing the acceptor
+  }
   return true;  // continue accepting
 }
 
@@ -512,30 +504,31 @@ absl::Status TcpAcceptor::SetSocketOptions() {
   const int flags = ::fcntl(fd, F_GETFL, 0);
   if (flags < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::fcntl with F_GETFL failed for: " << ToString();
+           << "::fcntl with F_GETFL failed for: " << ToString();
   }
   const int new_flags = flags | O_NONBLOCK;
   if (::fcntl(fd, F_SETFL, new_flags)) {
     return error::ErrnoToStatus(error::Errno())
-      << "::fcntl with F_SETFL, " << new_flags << " failed for: " << ToString();
+           << "::fcntl with F_SETFL, " << new_flags
+           << " failed for: " << ToString();
   }
   // Enable fast bind reusing (without this option, closing the socket
   //  will switch OS port to CLOSE_WAIT state for ~1 minute, during which
   //  bind fails with EADDRINUSE.
   const int true_flag = 1;
-  if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR,
-                   &true_flag, sizeof(true_flag)) < 0) {
+  if (::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &true_flag,
+                   sizeof(true_flag)) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::setsockopt with SO_REUSEADDR failed for: " << ToString();
+           << "::setsockopt with SO_REUSEADDR failed for: " << ToString();
   }
 #ifdef SO_NOSIGPIPE
   // Also disable the SIGPIPE for systems that support it (e.g. OSX & IOS)
-  if (::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE,
-                   &true_flag, sizeof(true_flag)) ) {
+  if (::setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &true_flag,
+                   sizeof(true_flag))) {
     return error::ErrnoToStatus(error::Errno())
-      << "::setsockopt with SO_NOSIGPIPE failed for: " << ToString();
+           << "::setsockopt with SO_NOSIGPIPE failed for: " << ToString();
   }
-#endif   // SO_NOSIGPIPE
+#endif  // SO_NOSIGPIPE
   return absl::OkStatus();
 }
 
@@ -544,7 +537,7 @@ absl::Status TcpAcceptor::InitializeLocalAddress() {
   socklen_t len = sizeof(addr);
   if (::getsockname(fd_.load(), AsSockAddr(&addr), &len) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::getsockname failed for: " << ToString();
+           << "::getsockname failed for: " << ToString();
   }
   ASSIGN_OR_RETURN(auto local_address,
                    HostPort::ParseFromSockAddr(AsSockAddr(&addr), len),
@@ -554,8 +547,8 @@ absl::Status TcpAcceptor::InitializeLocalAddress() {
   return absl::OkStatus();
 }
 
-void TcpAcceptor::InitializeAcceptedConnection(
-    Selector* net_selector, int client_fd) {
+void TcpAcceptor::InitializeAcceptedConnection(Selector* net_selector,
+                                               int client_fd) {
   // WARNING: net_selector = is a secondary net selector
   //          selector_ = is the main media selector
   //          CallAcceptHandler() is running on the secondary net selector.
@@ -564,13 +557,13 @@ void TcpAcceptor::InitializeAcceptedConnection(
 
   // create a TcpConnection object for this client, and wrap the provided
   // file descriptor.
-  auto client = absl::make_unique<TcpConnection>(
-      net_selector, params_.tcp_connection_params);
+  auto client = absl::make_unique<TcpConnection>(net_selector,
+                                                 params_.tcp_connection_params);
   auto wrap_status = client->Wrap(client_fd);
   if (!wrap_status.ok()) {
     stats_.connection_wrap_errors.fetch_add(1);
-    LOG(WARNING) << "Failed to wrap incoming client fd: " << client_fd
-                 << " - " << wrap_status;
+    LOG(WARNING) << "Failed to wrap incoming client fd: " << client_fd << " - "
+                 << wrap_status;
     if (::close(client_fd) < 0) {
       LOG(WARNING) << ToString() << " - ::close failed on unwrapped client fd: "
                    << error::ErrnoToString(error::Errno());
@@ -581,7 +574,8 @@ void TcpAcceptor::InitializeAcceptedConnection(
   // for TCP an accepted fd should be fully connected
   DCHECK_EQ(client->state(), TcpConnection::CONNECTED);
   LOG_IF(INFO, detail_log_)
-    << ToString() << " - Incoming connection accepted: " << client->ToString();
+      << ToString()
+      << " - Incoming connection accepted: " << client->ToString();
   // deliver this new client to application
   CallAcceptHandler(std::move(client));
 }
@@ -595,7 +589,7 @@ void TcpAcceptor::InternalClose(const absl::Status& status) {
     return;
   }
   LOG_IF_ERROR(WARNING, selector()->Unregister(this))
-    << "Unregistering acceptor from selector: " << ToString();
+      << "Unregistering acceptor from selector: " << ToString();
   if (::close(fd) < 0) {
     LOG(WARNING) << ToString() << " - ::close failed: "
                  << error::ErrnoToString(error::Errno());
@@ -607,24 +601,24 @@ void TcpAcceptor::InternalClose(const absl::Status& status) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TcpConnection::TcpConnection(Selector* selector, TcpConnectionParams params)
-  : Connection(ABSL_DIE_IF_NULL(selector)),
-    Selectable(ABSL_DIE_IF_NULL(selector)),
-    params_(std::move(params)),
-    timeouter_(selector, absl::bind_front(
-        &TcpConnection::HandleTimeoutEvent, this)) {
+    : Connection(ABSL_DIE_IF_NULL(selector)),
+      Selectable(ABSL_DIE_IF_NULL(selector)),
+      params_(std::move(params)),
+      timeouter_(selector,
+                 absl::bind_front(&TcpConnection::HandleTimeoutEvent, this)) {
   detail_log_ = params_.detail_log;
 }
 
 TcpConnection::~TcpConnection() {
   CHECK_EQ(state(), DISCONNECTED)
-    << "Can only delete disconnected connections.";
+      << "Can only delete disconnected connections.";
   CHECK_EQ(fd_.load(), kInvalidFdValue);
 }
 
 absl::Status TcpConnection::Wrap(int fd) {
   CHECK(selector()->IsInSelectThread());
   RET_CHECK(fd_.load() == kInvalidFdValue)
-    << "Should wrap only on unconnected connection.";
+      << "Should wrap only on unconnected connection.";
   fd_.store(fd);
   base::CallOnReturn close_fd([this]() { fd_.store(kInvalidFdValue); });
   RETURN_IF_ERROR(SetSocketOptions());
@@ -642,21 +636,20 @@ absl::Status TcpConnection::Wrap(int fd) {
 
 absl::Status TcpConnection::Connect(const HostPort& remote_addr) {
   CHECK(selector()->IsInSelectThread());
-  RET_CHECK(state() == DISCONNECTED ||
-            state() == RESOLVING) << "Illegal state: " << state_name();
-  RET_CHECK(fd_.load() == kInvalidFdValue)
-    << "Connection fd already created";
+  RET_CHECK(state() == DISCONNECTED || state() == RESOLVING)
+      << "Illegal state: " << state_name();
+  RET_CHECK(fd_.load() == kInvalidFdValue) << "Connection fd already created";
   if (!remote_addr.port().has_value()) {
     return status::InvalidArgumentErrorBuilder()
-      << "Hostport for TCP connection has no port specified: "
-      << remote_addr.ToString();
+           << "Hostport for TCP connection has no port specified: "
+           << remote_addr.ToString();
   }
   // maybe start DNS resolve
   if (state() == DISCONNECTED && !remote_addr.IsResolved()) {
     if (!remote_addr.host().has_value()) {
       return status::InvalidArgumentErrorBuilder()
-        << "Hostport for TCP connection has no host or ip specified: "
-        << remote_addr.ToString();
+             << "Hostport for TCP connection has no host or ip specified: "
+             << remote_addr.ToString();
     }
     {
       absl::WriterMutexLock l(&mutex_);
@@ -665,25 +658,27 @@ absl::Status TcpConnection::Connect(const HostPort& remote_addr) {
     LOG_IF(INFO, detail_log_) << ToString() << " - Starting DNS resolve.";
     set_state(RESOLVING);
     DnsResolver::Default().ResolveAsync(
-        remote_addr.host().value(), absl::bind_front(
-            &TcpConnection::HandleDnsResult, this));
-    return absl::OkStatus();   // for now
+        remote_addr.host().value(),
+        absl::bind_front(&TcpConnection::HandleDnsResult, this));
+    return absl::OkStatus();  // for now
   }
 
   struct sockaddr_storage addr;
   RETURN_IF_ERROR(remote_addr.ToSockAddr(&addr))
-    << "Setting listening address for TCP connection.";
+      << "Setting listening address for TCP connection.";
 
   const int fd = ::socket(addr.ss_family, SOCK_STREAM, 0);
   if (fd_ < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::socket failed for connecting to: " << remote_addr.ToString();
+           << "::socket failed for connecting to: " << remote_addr.ToString();
   }
   fd_.store(fd);
   base::CallOnReturn close_fd([this]() {
     if (::close(fd_.load())) {
-      LOG(WARNING) << ToString() << " - ::close failed for Connect error. "
-        "Close error: " << error::ErrnoToString(error::Errno());
+      LOG(WARNING) << ToString()
+                   << " - ::close failed for Connect error. "
+                      "Close error: "
+                   << error::ErrnoToString(error::Errno());
     }
     fd_.store(kInvalidFdValue);
   });
@@ -704,13 +699,14 @@ absl::Status TcpConnection::Connect(const HostPort& remote_addr) {
 
   if (::connect(fd_.load(), AsSockAddr(&addr), SockAddrLen(addr)) < 0) {
     if (error::Errno() != EINPROGRESS) {
-      LOG_IF(INFO, detail_log_) << ToString() << " - Error in connect: "
-                                << error::ErrnoToString(error::Errno());
+      LOG_IF(INFO, detail_log_)
+          << ToString()
+          << " - Error in connect: " << error::ErrnoToString(error::Errno());
       return error::ErrnoToStatus(error::Errno())
-        << "::connect failed for: " << ToString();
+             << "::connect failed for: " << ToString();
     }
     // For EINPROGRESS we need to wait for actually connecting.
-  } // else connect already completed, but to simplify logic, we wait for the
+  }  // else connect already completed, but to simplify logic, we wait for the
   // first HandleRead/Write and call InvokeConnectHandler there - see
   // PerformConnectOnFirstOperation.
   RETURN_IF_ERROR(RequestWriteEvents(true));
@@ -722,8 +718,8 @@ absl::Status TcpConnection::Connect(const HostPort& remote_addr) {
 
 void TcpConnection::FlushAndClose() {
   if (!selector()->IsInSelectThread()) {
-    selector()->RunInSelectLoop(absl::bind_front(
-        &TcpConnection::FlushAndClose, this));
+    selector()->RunInSelectLoop(
+        absl::bind_front(&TcpConnection::FlushAndClose, this));
   } else {
     LOG_IF(INFO, detail_log_) << ToString() << " - Flush and close.";
     CloseCommunication(CLOSE_WRITE);
@@ -731,8 +727,8 @@ void TcpConnection::FlushAndClose() {
 }
 void TcpConnection::ForceClose() {
   if (!selector()->IsInSelectThread()) {
-    selector()->RunInSelectLoop(absl::bind_front(
-        &TcpConnection::ForceClose, this));
+    selector()->RunInSelectLoop(
+        absl::bind_front(&TcpConnection::ForceClose, this));
   } else {
     LOG_IF(INFO, detail_log_) << ToString() << " - Force close.";
     // Force the close without any error.
@@ -742,14 +738,16 @@ void TcpConnection::ForceClose() {
 absl::Status TcpConnection::SetSendBufferSize(int size) {
   if (::setsockopt(fd_, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size))) {
     return error::ErrnoToStatus(error::Errno())
-      << "::Setting send buffer size of: " << size << " for: " << ToString();
+           << "::Setting send buffer size of: " << size
+           << " for: " << ToString();
   }
   return absl::OkStatus();
 }
 absl::Status TcpConnection::SetRecvBufferSize(int size) {
   if (::setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size))) {
     return error::ErrnoToStatus(error::Errno())
-      << "::Setting recv buffer size of: " << size << " for: " << ToString();
+           << "::Setting recv buffer size of: " << size
+           << " for: " << ToString();
   }
   return absl::OkStatus();
 }
@@ -769,21 +767,17 @@ HostPort TcpConnection::GetRemoteAddress() const {
 }
 std::string TcpConnection::ToString() const {
   return absl::StrCat(
-      "TcpConnection [ ",
-      GetLocalAddress().ToString(), " => ", GetRemoteAddress().ToString(),
-      " (fd: ", fd_.load(), ", state: ", state_name(),
-      ", last read: ",
+      "TcpConnection [ ", GetLocalAddress().ToString(), " => ",
+      GetRemoteAddress().ToString(), " (fd: ", fd_.load(),
+      ", state: ", state_name(), ", last read: ",
       absl::FormatTime(absl::FromUnixNanos(last_read_ts_.load())),
       ", last write: ",
-      absl::FormatTime(absl::FromUnixNanos(last_write_ts_.load())),
-      ") ]");
+      absl::FormatTime(absl::FromUnixNanos(last_write_ts_.load())), ") ]");
 }
 
 //////////////////////////////////////////////////////////////////////
 
-int TcpConnection::GetFd() const {
-  return fd_.load();
-}
+int TcpConnection::GetFd() const { return fd_.load(); }
 bool TcpConnection::HandleReadEvent(SelectorEventData event) {
   CHECK(selector()->IsInSelectThread());
   CHECK(state() != DISCONNECTED) << "Invalid state: " << state_name();
@@ -791,7 +785,7 @@ bool TcpConnection::HandleReadEvent(SelectorEventData event) {
     return PerformConnectOnFirstOperation();
   }
   CHECK(state() == CONNECTED || state() == FLUSHING)
-    << "Illegal state during read: " << state_name();
+      << "Illegal state during read: " << state_name();
   auto read_result = PerformRead();
   if (!read_result.ok()) {
     InternalClose(read_result.status(), true);
@@ -806,8 +800,7 @@ bool TcpConnection::HandleReadEvent(SelectorEventData event) {
       return false;
     }
   }
-  if (write_closed() || state() == FLUSHING
-      || IsProperError(error::Errno())) {
+  if (write_closed() || state() == FLUSHING || IsProperError(error::Errno())) {
     // Previous read returned 0 bytes, READ half closed.
     set_read_closed(true);
   }
@@ -831,11 +824,11 @@ bool TcpConnection::HandleReadEvent(SelectorEventData event) {
 bool TcpConnection::HandleWriteEvent(SelectorEventData event) {
   CHECK(selector()->IsInSelectThread());
   CHECK(state() != DISCONNECTED) << "Invalid state: " << state_name();
-  if ( state() == CONNECTING ) {
+  if (state() == CONNECTING) {
     return PerformConnectOnFirstOperation();
   }
   CHECK(state() == CONNECTED || state() == FLUSHING)
-    << "Illegal state during write: " << state_name();
+      << "Illegal state during write: " << state_name();
 
   auto write_result = Selectable::WriteCord(*outbuf(), params_.write_limit);
   if (!write_result.ok()) {
@@ -856,7 +849,7 @@ bool TcpConnection::HandleWriteEvent(SelectorEventData event) {
     }
   }
   if (!outbuf()->empty()) {
-    return true;   // Continue writing & the connection - we have more data.
+    return true;  // Continue writing & the connection - we have more data.
   }
   // Stop write events for now.
   auto write_request_status = RequestWriteEvents(false);
@@ -871,16 +864,15 @@ bool TcpConnection::HandleWriteEvent(SelectorEventData event) {
   // Execute ::shutdown write half.
   if (::shutdown(fd_, SHUT_WR) < 0) {
     InternalClose(error::ErrnoToStatus(error::Errno())
-                  << " - ::shutdown after flush failed for: "
-                  << ToString(), true);
+                      << " - ::shutdown after flush failed for: " << ToString(),
+                  true);
     return false;
   }
   set_write_closed(true);
   // We closed the write half, the peer is notified by RDHUP.
   // Now, we wait for it to close the connection too, and when it does, we get
   // a HUP. In case of linger_timeout happens, we force close the connection.
-  timeouter_.SetTimeout(kShutdownTimeoutId,
-                        params_.shutdown_linger_timeout);
+  timeouter_.SetTimeout(kShutdownTimeoutId, params_.shutdown_linger_timeout);
   return true;
 }
 
@@ -906,7 +898,8 @@ bool TcpConnection::HandleErrorEvent(SelectorEventData event) {
     const int err = ExtractSocketErrno(fd_.load());
     InternalClose(absl::Status(error::ErrnoToStatus(err)
                                << " - error detected on connection socket for: "
-                               << ToString()), true);
+                               << ToString()),
+                  true);
     return false;
   }
 
@@ -937,7 +930,7 @@ bool TcpConnection::HandleErrorEvent(SelectorEventData event) {
       // don't close here, let the next HandleReadEvent read pending data.
       // EPOLLHUP is continuously generated.
       LOG_IF(INFO, detail_log_)
-        << ToString() << " - HUP detected - continuing on more input";
+          << ToString() << " - HUP detected - continuing on more input";
       return true;
     }
     LOG_IF(INFO, detail_log_) << ToString() << " - HUP detected - stopping";
@@ -948,13 +941,13 @@ bool TcpConnection::HandleErrorEvent(SelectorEventData event) {
     set_state(FLUSHING);
     if (state() != CONNECTING && selector()->IsInputEvent(value)) {
       LOG_IF(INFO, detail_log_)
-        << ToString() << " - Remote HUP detected - continuing on more input";
+          << ToString() << " - Remote HUP detected - continuing on more input";
       // peer closed write half of the connection there may be pending data on
       // read. So wait until recv() returns 0, then set read_closed_ = true;
       return true;
     }
     LOG_IF(INFO, detail_log_)
-      << ToString() << " - Remote HUP detected - stopping";
+        << ToString() << " - Remote HUP detected - stopping";
     // no (E)POLLIN means READ disabled - Peer closed on us, just close.
     InternalClose(absl::OkStatus(), true);
     return false;
@@ -974,17 +967,17 @@ void TcpConnection::CloseCommunication(CloseDirective directive) {
     return;
   }
   LOG_IF(INFO, detail_log_)
-    << ToString() << " - Close communication: "
-    << CloseDirectiveName(directive);
+      << ToString()
+      << " - Close communication: " << CloseDirectiveName(directive);
   if (!selector()->IsInSelectThread()) {
-    selector()->RunInSelectLoop(absl::bind_front(
-        &TcpConnection::CloseCommunication, this, directive));
+    selector()->RunInSelectLoop(
+        absl::bind_front(&TcpConnection::CloseCommunication, this, directive));
     return;
   }
   // Ignore CLOSE_READ, we don't need to treat it.
   // If CLOSE_WRITE is requested and writing is not closed => go to FLUSHING.
-  if ((directive == CLOSE_WRITE || directive == CLOSE_READ_WRITE)
-      && !write_closed() && state() == CONNECTED) {
+  if ((directive == CLOSE_WRITE || directive == CLOSE_READ_WRITE) &&
+      !write_closed() && state() == CONNECTED) {
     set_state(FLUSHING);
     LOG_IF_ERROR(WARNING, RequestWriteEvents(true));
     // NOTE: when outbuf_ gets empty we execute ::shutdown(write)
@@ -998,26 +991,27 @@ absl::Status TcpConnection::SetSocketOptions() {
   const int flags = fcntl(fd, F_GETFL, 0);
   if (flags < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::fcntl with F_GETFL failed for: " << ToString();
+           << "::fcntl with F_GETFL failed for: " << ToString();
   }
   const int new_flags = flags | O_NONBLOCK;
   if (::fcntl(fd, F_SETFL, new_flags)) {
     return error::ErrnoToStatus(error::Errno())
-      << "::fcntl with F_SETFL, " << new_flags << " failed for: " << ToString();
+           << "::fcntl with F_SETFL, " << new_flags
+           << " failed for: " << ToString();
   }
   // disable Nagel buffering algorithm:
   const int true_flag = 1;
-  if (::setsockopt(fd_, IPPROTO_TCP, TCP_NODELAY,
-                   &true_flag, sizeof(true_flag)) < 0) {
+  if (::setsockopt(fd_, IPPROTO_TCP, TCP_NODELAY, &true_flag,
+                   sizeof(true_flag)) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::setsockopt with TCP_NODELAY failed for: " << ToString();
+           << "::setsockopt with TCP_NODELAY failed for: " << ToString();
   }
 #ifdef SO_NOSIGPIPE
   // Also disable the SIGPIPE for systems that support it (e.g. OSX & IOS)
-  if (::setsockopt(fd_, IPPROTO_TCP, SO_NOSIGPIPE,
-                   &true_flag, sizeof(true_flag)) < 0) {
+  if (::setsockopt(fd_, IPPROTO_TCP, SO_NOSIGPIPE, &true_flag,
+                   sizeof(true_flag)) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::setsockopt with SO_NOSIGPIPE failed for: " << ToString();
+           << "::setsockopt with SO_NOSIGPIPE failed for: " << ToString();
   }
 #endif  // SO_NOSIGPIPE
   // set tcp buffering parameters:
@@ -1035,7 +1029,7 @@ absl::Status TcpConnection::InitializeLocalAddress() {
   socklen_t len = sizeof(addr);
   if (::getsockname(fd_.load(), AsSockAddr(&addr), &len) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "::getsockname failed for: " << ToString();
+           << "::getsockname failed for: " << ToString();
   }
   ASSIGN_OR_RETURN(auto local_address,
                    HostPort::ParseFromSockAddr(AsSockAddr(&addr), len),
@@ -1050,7 +1044,7 @@ absl::Status TcpConnection::InitializeRemoteAddress() {
   socklen_t len = sizeof(addr);
   if (!::getpeername(fd_.load(), AsSockAddr(&addr), &len)) {
     return error::ErrnoToStatus(error::Errno())
-      << "::getpeername failed for: " << ToString();
+           << "::getpeername failed for: " << ToString();
   }
   ASSIGN_OR_RETURN(auto remote_address,
                    HostPort::ParseFromSockAddr(AsSockAddr(&addr), len),
@@ -1070,14 +1064,14 @@ void TcpConnection::InternalClose(const absl::Status& status,
   set_last_error(status);
   if (state() == RESOLVING) {
     LOG_IF(INFO, detail_log_)
-      << ToString() << " - Internal close delayed per resolve state.";
+        << ToString() << " - Internal close delayed per resolve state.";
     // will get closed when dns resolve completes.
     close_on_resolve_ = call_close_handler;
     return;
   }
   if (fd_.load() != kInvalidFdValue) {
     LOG_IF_ERROR(WARNING, selector()->Unregister(this))
-      << "Unregistering connection from selector: " << ToString();
+        << "Unregistering connection from selector: " << ToString();
     if (ABSL_PREDICT_FALSE(::shutdown(fd_, SHUT_RDWR) < 0)) {
       LOG(WARNING) << ToString() << " - ::shutdown failed: "
                    << error::ErrnoToString(error::Errno());
@@ -1093,11 +1087,11 @@ void TcpConnection::InternalClose(const absl::Status& status,
   set_write_closed(true);
   timeouter_.ClearAllTimeouts();
   LOG_IF(WARNING, ABSL_PREDICT_FALSE(!inbuf()->empty()))
-    << "Connection: " << ToString() << " is closed w/o all in bytes read: "
-    << inbuf()->size();
+      << "Connection: " << ToString()
+      << " is closed w/o all in bytes read: " << inbuf()->size();
   LOG_IF(WARNING, ABSL_PREDICT_FALSE(!outbuf()->empty()))
-    << "Connection: " << ToString() << " is closed w/o all out bytes written: "
-    << outbuf()->size();
+      << "Connection: " << ToString()
+      << " is closed w/o all out bytes written: " << outbuf()->size();
   inbuf()->Clear();
   outbuf()->Clear();
   if (call_close_handler) {
@@ -1107,22 +1101,20 @@ void TcpConnection::InternalClose(const absl::Status& status,
 
 void TcpConnection::HandleTimeoutEvent(int64_t timeout_id) {
   LOG_IF(WARNING, ABSL_PREDICT_FALSE(timeout_id != kShutdownTimeoutId))
-    << "Unknown timeout_id received by " << ToString() << ": " << timeout_id;
+      << "Unknown timeout_id received by " << ToString() << ": " << timeout_id;
   InternalClose(absl::OkStatus(), true);
 }
 
 void TcpConnection::HandleDnsResult(
     absl::StatusOr<std::shared_ptr<DnsHostInfo>> info) {
   if (!selector()->IsInSelectThread()) {
-    selector()->RunInSelectLoop([this, &info]() {
-      HandleDnsResult(info);
-    });
+    selector()->RunInSelectLoop([this, &info]() { HandleDnsResult(info); });
     return;
   }
   CHECK(state() == RESOLVING);
   if (close_on_resolve_.has_value()) {
     LOG_IF(INFO, detail_log_)
-      << ToString() << " - Resolve completed, but closed in the meantime.";
+        << ToString() << " - Resolve completed, but closed in the meantime.";
     // A close was ordered upon dns resolve completion - fulfill it now:
     InternalClose(last_error(), close_on_resolve_.value());
     return;
@@ -1132,7 +1124,7 @@ void TcpConnection::HandleDnsResult(
     auto ip = info.value()->PickNextAddress();
     if (ABSL_PREDICT_FALSE(ip.has_value())) {
       status = status::InternalErrorBuilder()
-        << "No valid IP address was resolved for " << ToString();
+               << "No valid IP address was resolved for " << ToString();
     } else {
       net::HostPort connect_addr;
       {
@@ -1140,8 +1132,7 @@ void TcpConnection::HandleDnsResult(
         remote_address_.set_ip(ip.value());
         connect_addr = remote_address_;
       }
-      LOG_IF(INFO, detail_log_)
-        << ToString() << " - Resolve completed OK.";
+      LOG_IF(INFO, detail_log_) << ToString() << " - Resolve completed OK.";
       status = Connect(connect_addr);
     }
   }
@@ -1153,15 +1144,14 @@ void TcpConnection::HandleDnsResult(
 bool TcpConnection::PerformConnectOnFirstOperation() {
   set_state(CONNECTED);
   LOG_IF_ERROR(WARNING, InitializeLocalAddress())
-    << "Initializing local address while becoming connected on read.";
+      << "Initializing local address while becoming connected on read.";
   // Read and write events should be enabled. Now call the application
   // handler for the connected event.
   CallConnectHandler();
   // Either the application closed the connection in "ConnectHandler"
   // or the connection continues in the CONNECTED state
-  CHECK(state() == CONNECTED
-        || state() == DISCONNECTED || state() == FLUSHING)
-    << "Application changed the status to an invalid state: " << state_name();
+  CHECK(state() == CONNECTED || state() == DISCONNECTED || state() == FLUSHING)
+      << "Application changed the status to an invalid state: " << state_name();
   LOG_IF(INFO, detail_log_) << ToString() << " - Connected.";
   return state() == CONNECTED;
 }
@@ -1170,13 +1160,13 @@ absl::StatusOr<ssize_t> TcpConnection::PerformRead() {
   int count = 0;
   if (ABSL_PREDICT_FALSE(::ioctl(fd_.load(), FIONREAD, &count) < 0)) {
     return error::ErrnoToStatus(error::Errno())
-      << " - performing ::ioctl w/ FIONREAD for: " << ToString();
+           << " - performing ::ioctl w/ FIONREAD for: " << ToString();
   }
   if (count <= 0) {
-    return absl::OkStatus();   // nothing to read.
+    return absl::OkStatus();  // nothing to read.
   }
-  if (params_.read_limit.has_value()
-      && size_t(count) > params_.read_limit.value()) {
+  if (params_.read_limit.has_value() &&
+      size_t(count) > params_.read_limit.value()) {
     count = params_.read_limit.value();
   }
   ASSIGN_OR_RETURN(const ssize_t cb, Selectable::ReadToCord(inbuf(), count),
@@ -1186,14 +1176,14 @@ absl::StatusOr<ssize_t> TcpConnection::PerformRead() {
   return cb;
 }
 
-void TcpConnection::CallCloseHandler(
-    const absl::Status& status, CloseDirective directive) {
+void TcpConnection::CallCloseHandler(const absl::Status& status,
+                                     CloseDirective directive) {
   // When calling the close handle for read, the read closed flag must be on.
-  CHECK(read_closed()
-        || (directive != CLOSE_READ && directive != CLOSE_READ_WRITE));
+  CHECK(read_closed() ||
+        (directive != CLOSE_READ && directive != CLOSE_READ_WRITE));
   // When calling the close handle for write, the write closed flag must be on.
-  CHECK(write_closed()
-        || (directive != CLOSE_WRITE && directive != CLOSE_READ_WRITE));
+  CHECK(write_closed() ||
+        (directive != CLOSE_WRITE && directive != CLOSE_READ_WRITE));
   Connection::CallCloseHandler(status, directive);
 }
 

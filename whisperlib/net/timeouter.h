@@ -42,7 +42,8 @@ class Timeouter {
   absl::Mutex mutex_;
   using TimeoutMap = absl::flat_hash_map<TimeoutId, Selector::AlarmId>;
   // Maps from timeout Id to registered alarm ids.
-  TimeoutMap timeouts_ ABSL_GUARDED_BY(mutex_);;
+  TimeoutMap timeouts_ ABSL_GUARDED_BY(mutex_);
+  ;
 };
 
 }  // namespace net

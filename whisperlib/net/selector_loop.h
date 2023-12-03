@@ -12,8 +12,8 @@
 #include "whisperlib/net/selector_event_data.h"
 
 #ifdef __linux__
-#include <sys/poll.h>
 #include <sys/epoll.h>
+#include <sys/poll.h>
 
 // We need this definde to a safe value anyway
 #ifndef EPOLLRDHUP
@@ -26,10 +26,10 @@
 
 #elif defined(__APPLE__)
 
-#include <sys/types.h>
 #include <sys/event.h>
 #include <sys/poll.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 // TODO(cpopescu): continue
 // #define HAVE_KQUEUE
@@ -44,7 +44,7 @@ namespace whisper {
 namespace net {
 
 class SelectorLoop {
-public:
+ public:
   SelectorLoop() = default;
   virtual ~SelectorLoop() = default;
 
@@ -60,8 +60,8 @@ public:
   // Run a selector loop step. It fills in events two things:
   //  -- the user data associted with the fd that was triggered
   //  -- the event that happended (an or of Selector desires)
-  virtual absl::StatusOr<std::vector<SelectorEventData>>
-  LoopStep(absl::Duration timeout) = 0;
+  virtual absl::StatusOr<std::vector<SelectorEventData>> LoopStep(
+      absl::Duration timeout) = 0;
 
   // Abstracts away identification of signals received through (poll) events:
   virtual bool IsHangUpEvent(int event_value) const = 0;
@@ -74,7 +74,7 @@ public:
 #ifdef HAVE_EPOLL
 // A selector loop implementation based on epoll - a linux special.
 class EpollSelectorLoop : public SelectorLoop {
-public:
+ public:
   static absl::StatusOr<std::unique_ptr<EpollSelectorLoop>> Create(
       int signal_fd, size_t max_events_per_step);
   ~EpollSelectorLoop();
@@ -92,7 +92,7 @@ public:
   bool IsErrorEvent(int event_value) const override;
   bool IsInputEvent(int event_value) const override;
 
-private:
+ private:
   EpollSelectorLoop(int signal_fd, size_t max_events_per_step);
 
   absl::Status Initialize();
@@ -110,7 +110,7 @@ private:
 
 #ifdef HAVE_KQUEUE
 class KQueueSelectorLoop {
-public:
+ public:
   static absl::StatusOr<std::unique_ptr<KQueueSelectorLoop>> Create(
       int signal_fd, size_t max_events_per_step);
   KQueueSelectorLoop(int signal_fd, size_t max_events_per_step);
@@ -120,8 +120,8 @@ public:
   virtual absl::Status Update(int fd, void* user_data, uint32_t desires);
   virtual absl::Status Delete(int fd) = 0;
 
-  virtual absl::StatusOr<std::vector<SelectorEventData>>
-  LoopStep(absl::Duration timeout);
+  virtual absl::StatusOr<std::vector<SelectorEventData>> LoopStep(
+      absl::Duration timeout);
 
   virtual bool IsHangUpEvent(int event_value) const;
   virtual bool IsRemoteHangUpEvent(int event_value) const;
@@ -129,16 +129,15 @@ public:
   virtual bool IsErrorEvent(int event_value) const;
   virtual bool IsInputEvent(int event_value) const;
 
-private:
+ private:
   // TODO(cpopescu):  continue
 };
 #endif  // HAVE_KQUEUE
 
-
 // A selector loop implementation based on poll - available on most systems,
 // but with some limitations and of lower speed.
 class PollSelectorLoop : public SelectorLoop {
-public:
+ public:
   static absl::StatusOr<std::unique_ptr<PollSelectorLoop>> Create(
       int signal_fd);
   ~PollSelectorLoop();
@@ -156,7 +155,7 @@ public:
   bool IsErrorEvent(int event_value) const override;
   bool IsInputEvent(int event_value) const override;
 
-private:
+ private:
   PollSelectorLoop(int signal_fd);
   absl::Status Initialize();
 
@@ -173,7 +172,7 @@ private:
   // how many in fds are used in fds_
   size_t fds_size_ = 0;
   // maps from fd to index in fds_ and user data
-  typedef absl::flat_hash_map< int, std::pair<size_t, void*> > DataMap;
+  typedef absl::flat_hash_map<int, std::pair<size_t, void*>> DataMap;
   DataMap fd_data_;
   // indices that we need to compact at the end of the step
   std::vector<size_t> indices_to_compact_;

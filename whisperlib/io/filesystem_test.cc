@@ -49,20 +49,22 @@ TEST_F(FilesystemTest, FilesystemOps) {
 
   absl::Time start_time = absl::Now() - absl::Seconds(1);
   // Creating the files in the directory:
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d1/dd1/ddd1/f1")), "abcdefg").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d1/dd1/ddd1/f2")), "123").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d1/dd1/g1")), "").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d1/h1")), "").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d2/hh1")), "").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d2/hh2")), "").status());
-  ASSERT_OK(File::WriteFromString(
-      path::Join(tmp_dir, _p("d2/dd1/gg1")), "").status());
+  ASSERT_OK(File::WriteFromString(path::Join(tmp_dir, _p("d1/dd1/ddd1/f1")),
+                                  "abcdefg")
+                .status());
+  ASSERT_OK(
+      File::WriteFromString(path::Join(tmp_dir, _p("d1/dd1/ddd1/f2")), "123")
+          .status());
+  ASSERT_OK(
+      File::WriteFromString(path::Join(tmp_dir, _p("d1/dd1/g1")), "").status());
+  ASSERT_OK(
+      File::WriteFromString(path::Join(tmp_dir, _p("d1/h1")), "").status());
+  ASSERT_OK(
+      File::WriteFromString(path::Join(tmp_dir, _p("d2/hh1")), "").status());
+  ASSERT_OK(
+      File::WriteFromString(path::Join(tmp_dir, _p("d2/hh2")), "").status());
+  ASSERT_OK(File::WriteFromString(path::Join(tmp_dir, _p("d2/dd1/gg1")), "")
+                .status());
   ASSERT_OK(Symlink(path::Join(tmp_dir, _p("d2/hh3")),
                     path::Join(tmp_dir, _p("d2/hh2"))));
   EXPECT_TRUE(IsSymlink(path::Join(tmp_dir, _p("d2/hh3"))));
@@ -82,41 +84,42 @@ TEST_F(FilesystemTest, FilesystemOps) {
   EXPECT_EQ(GetFileSize(path::Join(tmp_dir, _p("d1/dd1/ddd1/f1"))).value(), 7);
   EXPECT_EQ(GetFileSize(path::Join(tmp_dir, _p("d1/dd1/ddd1/f2"))).value(), 3);
   EXPECT_GT(GetFileSize(path::Join(tmp_dir, _p("d1/dd1/ddd1"))).value(), 0);
-  EXPECT_RAISES(GetFileSize(
-      path::Join(tmp_dir, _p("d1/dd1/ddd1/f3"))).status(), FailedPrecondition);
-
+  EXPECT_RAISES(GetFileSize(path::Join(tmp_dir, _p("d1/dd1/ddd1/f3"))).status(),
+                FailedPrecondition);
 
   {
-    ASSERT_OK_AND_ASSIGN(
-      auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_DIRS));
+    ASSERT_OK_AND_ASSIGN(auto dirlist,
+                         DirList(tmp_dir, LIST_FILES | LIST_DIRS));
     std::sort(dirlist.begin(), dirlist.end());
-    EXPECT_THAT(dirlist, testing::ElementsAre(
-                  "d1", "d2", "d3"));
+    EXPECT_THAT(dirlist, testing::ElementsAre("d1", "d2", "d3"));
   }
   {
-    ASSERT_OK_AND_ASSIGN(
-      auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_DIRS | LIST_RECURSIVE));
+    ASSERT_OK_AND_ASSIGN(auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_DIRS |
+                                                            LIST_RECURSIVE));
     std::sort(dirlist.begin(), dirlist.end());
-    EXPECT_THAT(dirlist, testing::ElementsAre(
-        _p("d1"), _p("d1/dd1"), _p("d1/dd1/ddd1"), _p("d1/dd1/ddd1/dddd1"),
-        _p("d1/dd1/ddd1/f1"), _p("d1/dd1/ddd1/f2"), _p("d1/dd1/ddd2"),
-        _p("d1/dd1/g1"), _p("d1/dd2"), _p("d1/h1"), _p("d2"), _p("d2/dd1"),
-        _p("d2/dd1/gg1"), _p("d2/hh1"), _p("d2/hh2"), _p("d2/hh3"), _p("d3")));
+    EXPECT_THAT(
+        dirlist,
+        testing::ElementsAre(
+            _p("d1"), _p("d1/dd1"), _p("d1/dd1/ddd1"), _p("d1/dd1/ddd1/dddd1"),
+            _p("d1/dd1/ddd1/f1"), _p("d1/dd1/ddd1/f2"), _p("d1/dd1/ddd2"),
+            _p("d1/dd1/g1"), _p("d1/dd2"), _p("d1/h1"), _p("d2"), _p("d2/dd1"),
+            _p("d2/dd1/gg1"), _p("d2/hh1"), _p("d2/hh2"), _p("d2/hh3"),
+            _p("d3")));
   }
   {
-    ASSERT_OK_AND_ASSIGN(
-      auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_RECURSIVE));
+    ASSERT_OK_AND_ASSIGN(auto dirlist,
+                         DirList(tmp_dir, LIST_FILES | LIST_RECURSIVE));
     std::sort(dirlist.begin(), dirlist.end());
     EXPECT_THAT(dirlist, testing::ElementsAre(
-      _p("d1/dd1/ddd1/f1"), _p("d1/dd1/ddd1/f2"),
-      _p("d1/dd1/g1"), _p("d1/h1"),
-      _p("d2/dd1/gg1"), _p("d2/hh1"), _p("d2/hh2"), _p("d2/hh3")));
+                             _p("d1/dd1/ddd1/f1"), _p("d1/dd1/ddd1/f2"),
+                             _p("d1/dd1/g1"), _p("d1/h1"), _p("d2/dd1/gg1"),
+                             _p("d2/hh1"), _p("d2/hh2"), _p("d2/hh3")));
   }
 
   // On Windows the macro expansion does not expand #ifdef s
   EXPECT_RAISES(Mv(path::Join(tmp_dir, _p("d1/dd1/ddd1/f1")),
                    path::Join(tmp_dir, _p("d1/dd1/ddd1/f2"))),
-    Internal);
+                Internal);
   EXPECT_RAISES(RmFile(path::Join(tmp_dir, _p("d1/dd1"))), Internal);
   EXPECT_RAISES(RmDir(path::Join(tmp_dir, _p("d1/dd1"))), Internal);
   EXPECT_OK(RmFile(path::Join(tmp_dir, _p("d1/dd1/ddd1/f1"))));
@@ -144,12 +147,12 @@ TEST_F(FilesystemTest, FilesystemOps) {
 
   EXPECT_OK(RmFilesUnder(path::Join(tmp_dir, "d1"), true));
   {
-    ASSERT_OK_AND_ASSIGN(
-      auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_DIRS | LIST_RECURSIVE));
+    ASSERT_OK_AND_ASSIGN(auto dirlist, DirList(tmp_dir, LIST_FILES | LIST_DIRS |
+                                                            LIST_RECURSIVE));
     std::sort(dirlist.begin(), dirlist.end());
-    EXPECT_THAT(dirlist, testing::ElementsAre(
-        "d1", "d2", _p("d2/dd1"), _p("d2/dd1/gg1"),
-        _p("d2/hh2"), _p("d2/hh3"), "d3"));
+    EXPECT_THAT(dirlist,
+                testing::ElementsAre("d1", "d2", _p("d2/dd1"), _p("d2/dd1/gg1"),
+                                     _p("d2/hh2"), _p("d2/hh3"), "d3"));
   }
 }
 }  // namespace

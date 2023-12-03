@@ -1,7 +1,7 @@
 #include "whisperlib/io/filesystem.h"
 
-#include <sys/types.h>
 #include <dirent.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include <utility>
@@ -50,9 +50,9 @@ bool Exists(absl::string_view path) {
 absl::StatusOr<int64_t> GetFileSize(absl::string_view path) {
   std::string path_str(path);
   struct stat st;
-  if ( 0 != ::stat(path_str.c_str(), &st) ) {
+  if (0 != ::stat(path_str.c_str(), &st)) {
     return status::FailedPreconditionErrorBuilder()
-      << "Error checking size of file named `" << path << "`";
+           << "Error checking size of file named `" << path << "`";
   }
   return st.st_size;
 }
@@ -60,9 +60,9 @@ absl::StatusOr<int64_t> GetFileSize(absl::string_view path) {
 absl::StatusOr<absl::Time> GetFileModTime(absl::string_view path) {
   std::string path_str(path);
   struct stat st;
-  if ( 0 != ::stat(path_str.c_str(), &st) ) {
+  if (0 != ::stat(path_str.c_str(), &st)) {
     return status::FailedPreconditionErrorBuilder()
-      << "Error checking mod time of file named `" << path << "`";
+           << "Error checking mod time of file named `" << path << "`";
   }
   return absl::FromTimeT(st.st_mtime);
 }
@@ -74,7 +74,7 @@ absl::Status CreateRecursiveDirs(absl::string_view path, mode_t mode) {
     return absl::OkStatus();
   }
   if (*crt_dir.rbegin() == path::kDirSeparator) {
-    crt_dir.resize(crt_dir.size() - 1);   // cut any trailing '/'
+    crt_dir.resize(crt_dir.size() - 1);  // cut any trailing '/'
   }
   std::vector<std::string> to_create;
   while (!crt_dir.empty()) {
@@ -83,8 +83,8 @@ absl::Status CreateRecursiveDirs(absl::string_view path, mode_t mode) {
     }
     if (IsReadableFile(crt_dir)) {
       return status::FailedPreconditionErrorBuilder()
-        << "Cannot create directory `" << path << "` as path: `" << crt_dir
-        << "` is a file.";
+             << "Cannot create directory `" << path << "` as path: `" << crt_dir
+             << "` is a file.";
     }
     to_create.push_back(crt_dir);
     crt_dir = std::string(path::Dirname(crt_dir));
@@ -95,7 +95,7 @@ absl::Status CreateRecursiveDirs(absl::string_view path, mode_t mode) {
     const int result = ::mkdir(crt_path.c_str(), mode);
     if (result != 0) {
       return error::ErrnoToStatus(errno)
-        <<  "Error creating directory: `" << crt_path << "`";
+             << "Error creating directory: `" << crt_path << "`";
     }
   }
   return absl::OkStatus();
@@ -110,7 +110,7 @@ absl::Status MkDir(absl::string_view dir, bool recursive, mode_t mode) {
   const int result = ::mkdir(dir_str.c_str(), mode);
   if (result != 0 && errno != EEXIST) {
     return error::ErrnoToStatus(errno)
-      << "Failed to create dir: `" << dir << "`";
+           << "Failed to create dir: `" << dir << "`";
   }
   return absl::OkStatus();
 }
@@ -127,12 +127,12 @@ absl::Status RmFile(absl::string_view path) {
       return absl::OkStatus();
     }
     return error::ErrnoToStatus(errno)
-      << "lstat failed for path to be remove: `" << path << "`";
+           << "lstat failed for path to be remove: `" << path << "`";
   }
   if (S_ISREG(s.st_mode) || S_ISLNK(s.st_mode)) {
     if (::unlink(path_str.c_str())) {
       return error::ErrnoToStatus(errno)
-        << "unlink failed for path: `" << path << "`";
+             << "unlink failed for path: `" << path << "`";
     }
     return absl::OkStatus();
   }
@@ -140,8 +140,8 @@ absl::Status RmFile(absl::string_view path) {
     return RmDir(path);
   }
   return status::UnimplementedErrorBuilder()
-    << "Cannot remove file: `" << path << "` per unsupported mode: "
-    << s.st_mode;
+         << "Cannot remove file: `" << path
+         << "` per unsupported mode: " << s.st_mode;
 }
 
 absl::Status RmDir(absl::string_view path) {
@@ -149,7 +149,7 @@ absl::Status RmDir(absl::string_view path) {
   const int result = ::rmdir(path_str.c_str());
   if (result != 0) {
     return error::ErrnoToStatus(errno)
-      << "rmdir failed for path: `" << path << "`";
+           << "rmdir failed for path: `" << path << "`";
   }
   return absl::OkStatus();
 }
@@ -163,11 +163,10 @@ absl::Status RmFilesUnder(absl::string_view path, bool rm_dirs) {
   }
   if (!IsDir(path)) {
     return status::NotFoundErrorBuilder()
-      << "RmFilesUnder directory `" << path << "` - cannot be found.";
+           << "RmFilesUnder directory `" << path << "` - cannot be found.";
   }
-  ASSIGN_OR_RETURN(
-    std::vector<std::string> files, DirList(path, options),
-    _ << "While trying to delete files under: `" << path << "`");
+  ASSIGN_OR_RETURN(std::vector<std::string> files, DirList(path, options),
+                   _ << "While trying to delete files under: `" << path << "`");
   absl::Status rm_status;
   std::vector<std::string> dirs;
   for (const auto& file : files) {
@@ -194,55 +193,50 @@ absl::Status RmFilesUnder(absl::string_view path, bool rm_dirs) {
   return rm_status;
 }
 
-absl::Status Mv(absl::string_view src_path,
-                absl::string_view dest_dir,
+absl::Status Mv(absl::string_view src_path, absl::string_view dest_dir,
                 bool overwrite) {
-  return Rename(src_path,
-                path::Join(dest_dir, path::Basename(src_path)),
+  return Rename(src_path, path::Join(dest_dir, path::Basename(src_path)),
                 overwrite);
 }
 
-absl::Status Rename(absl::string_view old_path,
-                    absl::string_view new_path,
+absl::Status Rename(absl::string_view old_path, absl::string_view new_path,
                     bool overwrite) {
   const bool old_exists = Exists(old_path);
   const bool old_is_file = IsReadableFile(old_path);
   const bool old_is_dir = IsDir(old_path);
   const bool old_is_symlink = IsSymlink(old_path);
   const bool old_is_single = old_is_file || old_is_symlink;
-  const std::string old_type = (old_is_symlink ? "symlink" :
-                                old_is_file ? "file" :
-                                old_is_dir ? "directory" :
-                                "unknown");
+  const std::string old_type = (old_is_symlink ? "symlink"
+                                : old_is_file  ? "file"
+                                : old_is_dir   ? "directory"
+                                               : "unknown");
 
   const bool new_exists = Exists(new_path);
   const bool new_is_file = IsReadableFile(new_path);
   const bool new_is_dir = IsDir(new_path);
   const bool new_is_symlink = IsSymlink(new_path);
   const bool new_is_single = new_is_file || new_is_symlink;
-  const std::string new_type = (new_is_symlink ? "symlink" :
-                                new_is_file ? "file" :
-                                new_is_dir ? "directory" :
-                                "unknown");
-
+  const std::string new_type = (new_is_symlink ? "symlink"
+                                : new_is_file  ? "file"
+                                : new_is_dir   ? "directory"
+                                               : "unknown");
 
   if (!old_exists) {
     return status::NotFoundErrorBuilder()
-      << "Rename old_path: `" << old_path << "` does not exist";
+           << "Rename old_path: `" << old_path << "` does not exist";
   }
-  if ((old_is_single && new_is_dir) ||
-      (old_is_dir && new_is_single)) {
+  if ((old_is_single && new_is_dir) || (old_is_dir && new_is_single)) {
     return status::FailedPreconditionErrorBuilder()
-      << "Rename old_path: `" << old_path << "`(" << old_type
-      << "), new_path: `" << new_path << "`(" << new_type
-      << ") incompatible types";
+           << "Rename old_path: `" << old_path << "`(" << old_type
+           << "), new_path: `" << new_path << "`(" << new_type
+           << ") incompatible types";
   }
   if (new_exists && new_is_single) {
     if (!overwrite) {
       return status::FailedPreconditionErrorBuilder()
-        << "Rename old_path: `" << old_path << "`(" << old_type
-        << ") , new_path: `" << new_path << "`(" << new_type
-        << ") cannot overwrite";
+             << "Rename old_path: `" << old_path << "`(" << old_type
+             << ") , new_path: `" << new_path << "`(" << new_type
+             << ") cannot overwrite";
     }
   }
 
@@ -256,14 +250,14 @@ absl::Status Rename(absl::string_view old_path,
     std::string new_path_str(new_path);
     if (::rename(old_path_str.c_str(), new_path_str.c_str())) {
       return error::ErrnoToStatus(errno)
-        << "::rename failed for old_path: `" << old_path << "`"
-        << ", new_path: `" << new_path << "`";
+             << "::rename failed for old_path: `" << old_path << "`"
+             << ", new_path: `" << new_path << "`";
     }
     return absl::OkStatus();
   }
   return status::UnimplementedErrorBuilder()
-    << "Rename old_path: `" << old_path << "`(" << old_type
-    << ") , new_path: `" << new_path << "`(" << new_type;
+         << "Rename old_path: `" << old_path << "`(" << old_type
+         << ") , new_path: `" << new_path << "`(" << new_type;
 }
 
 absl::Status Symlink(absl::string_view link_path,
@@ -272,19 +266,20 @@ absl::Status Symlink(absl::string_view link_path,
   std::string target_path_str(target_path);
   if (::symlink(target_path_str.c_str(), link_path_str.c_str()) != 0) {
     return error::ErrnoToStatus(errno)
-      << "linking `" << link_path << "` to target `" << target_path << "`";
+           << "linking `" << link_path << "` to target `" << target_path << "`";
   }
   return absl::OkStatus();
 }
 
-absl::StatusOr<std::vector<std::string>> DirList(
-  absl::string_view dir, uint32_t list_attr, size_t max_depth) {
+absl::StatusOr<std::vector<std::string>> DirList(absl::string_view dir,
+                                                 uint32_t list_attr,
+                                                 size_t max_depth) {
   std::string dir_str(dir);
   DIR* dirp = ::opendir(dir_str.c_str());
 
   if (dirp == nullptr) {
     return error::ErrnoToStatus(errno)
-      << "::opendir failed for dir: `" << dir << "`";
+           << "::opendir failed for dir: `" << dir << "`";
   }
   std::vector<std::string> out;
   while (true) {
@@ -301,20 +296,19 @@ absl::StatusOr<std::vector<std::string>> DirList(
     struct stat st;
     const std::string abs_path = path::Join(dir, basename);
     // ::lstat does not follow symlinks. It returns stats for the link itself.
-    if ( 0 != ::lstat(abs_path.c_str(), &st) ) {
+    if (0 != ::lstat(abs_path.c_str(), &st)) {
       // We just skip this error for now.
       continue;
     }
     // maybe accumulate entry
-    if ( (list_attr & LIST_EVERYTHING) == LIST_EVERYTHING ||
-         ((list_attr & LIST_FILES) && (S_ISREG(st.st_mode)
-                                       || S_ISLNK(st.st_mode))) ||
-         ((list_attr & LIST_DIRS) && S_ISDIR(st.st_mode)) ) {
+    if ((list_attr & LIST_EVERYTHING) == LIST_EVERYTHING ||
+        ((list_attr & LIST_FILES) &&
+         (S_ISREG(st.st_mode) || S_ISLNK(st.st_mode))) ||
+        ((list_attr & LIST_DIRS) && S_ISDIR(st.st_mode))) {
       out.push_back(std::string(basename));
     }
     // recursive listing
-    if (max_depth > 0
-        && (list_attr & LIST_RECURSIVE) && S_ISDIR(st.st_mode)) {
+    if (max_depth > 0 && (list_attr & LIST_RECURSIVE) && S_ISDIR(st.st_mode)) {
       ASSIGN_OR_RETURN(std::vector<std::string> subitems,
                        DirList(abs_path, list_attr, max_depth - 1));
       for (absl::string_view subitem : subitems) {

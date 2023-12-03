@@ -7,9 +7,9 @@
 #include <array>
 #include <cstdint>
 
-#include "absl/strings/string_view.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 
 namespace whisper {
@@ -57,8 +57,8 @@ class IpAddress {
   static absl::StatusOr<IpAddress> ParseFromString(absl::string_view ip);
   // Creates an IpAddress from the information contained in provided
   // by the socket address. We expect AF_INET or AF_INET6 family for this.
-  static absl::StatusOr<IpAddress> ParseFromSockAddr(
-      const sockaddr* saddr, size_t saddr_len);
+  static absl::StatusOr<IpAddress> ParseFromSockAddr(const sockaddr* saddr,
+                                                     size_t saddr_len);
 
   // Returns the IP address as a string.
   std::string ToString() const;
@@ -110,9 +110,9 @@ class SockAddrSetter {
 
   // Returns the internal sockaddr buffer.
   const struct sockaddr* addr() const;  // const version
-  struct sockaddr* addr();   // non const version
+  struct sockaddr* addr();              // non const version
 
-private:
+ private:
   // Internal utilities for pointer conversion.
   struct sockaddr_in* sockaddr_in();
   struct sockaddr_in6* sockaddr_in6();
@@ -122,10 +122,9 @@ private:
 };
 
 class HostPort {
-public:
+ public:
   HostPort() = default;
-  HostPort(absl::optional<std::string> host,
-           absl::optional<IpAddress> ip,
+  HostPort(absl::optional<std::string> host, absl::optional<IpAddress> ip,
            absl::optional<uint16_t> port);
 
   const absl::optional<std::string>& host() const;
@@ -152,8 +151,8 @@ public:
   static absl::StatusOr<HostPort> ParseFromString(absl::string_view host_port);
   // Parses a HostPort from the provided socket addres structure.
   // This sets just the ip / port / scope_id.
-  static absl::StatusOr<HostPort> ParseFromSockAddr(
-      const sockaddr* saddr, size_t saddr_len);
+  static absl::StatusOr<HostPort> ParseFromSockAddr(const sockaddr* saddr,
+                                                    size_t saddr_len);
 
   // Canonical string representation of this hostport.
   std::string ToString() const;
@@ -164,7 +163,7 @@ public:
   // Error is returned if not IsResolved.
   absl::Status ToSockAddr(sockaddr_storage* addr) const;
 
-private:
+ private:
   absl::optional<std::string> host_;
   absl::optional<IpAddress> ip_;
   absl::optional<uint16_t> port_;

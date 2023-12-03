@@ -18,22 +18,16 @@ namespace net {
 
 // Simple DNS information about a host expressed as a UTF8 string.
 class DnsHostInfo {
-public:
+ public:
   // Builds a DnsHostInfo for a UTF8 host name.
   DnsHostInfo(absl::string_view hostname);
 
   // Name of the host:
-  const std::string& hostname() const {
-    return hostname_;
-  }
+  const std::string& hostname() const { return hostname_; }
   // IPv4 addresses resolved to the host.
-  const std::vector<IpAddress>& ipv4() const {
-    return ipv4_;
-  }
+  const std::vector<IpAddress>& ipv4() const { return ipv4_; }
   // IPv6 addresses resolved to the host.
-  const std::vector<IpAddress>& ipv6() const {
-    return ipv6_;
-  }
+  const std::vector<IpAddress>& ipv6() const { return ipv6_; }
 
   // Converts and returns the hostname for actual DNS resolve (i.e. puncode
   // encoded).
@@ -42,8 +36,7 @@ public:
   // If we have any IP addresses resolved to this hostname.
   bool IsValid() const;
   // Sets the corresponding IP addresses for the host.
-  void SetIpAddress(std::vector<IpAddress> ipv4,
-                    std::vector<IpAddress> ipv6);
+  void SetIpAddress(std::vector<IpAddress> ipv4, std::vector<IpAddress> ipv6);
 
   // Returns the first available IP address (IPv4 preference).
   absl::optional<IpAddress> PickFirstAddress() const;
@@ -62,7 +55,7 @@ public:
   // Returns a string representation for this object for human consumption.
   std::string ToString() const;
 
-private:
+ private:
   // Name of the host to resolve, in UTF8 format.
   std::string hostname_;
 
@@ -102,13 +95,13 @@ class DnsResolver {
   static DnsResolver& Default();
 
   // Resolves a host name, returns the resolve information or error status.
-  absl::StatusOr<std::shared_ptr<DnsHostInfo>>
-  Resolve(absl::string_view hostname);
+  absl::StatusOr<std::shared_ptr<DnsHostInfo>> Resolve(
+      absl::string_view hostname);
 
   // Resolves a host name asynchronously, and calls the provided callback
   // upon completion.
   using DnsCallback =
-    std::function<void(absl::StatusOr<std::shared_ptr<DnsHostInfo>>)>;
+      std::function<void(absl::StatusOr<std::shared_ptr<DnsHostInfo>>)>;
   void ResolveAsync(absl::string_view hostname, DnsCallback callback);
 
  protected:
@@ -117,7 +110,7 @@ class DnsResolver {
   DnsResolverOptions options_;
   std::vector<std::unique_ptr<std::thread>> threads_;
   using ResolveQueue =
-    synch::ProducerConsumerQueue<std::pair<std::string, DnsCallback>>;
+      synch::ProducerConsumerQueue<std::pair<std::string, DnsCallback>>;
   std::vector<std::unique_ptr<ResolveQueue>> resolves_;
   std::atomic<size_t> resolve_index_ = ATOMIC_VAR_INIT(0);
 };

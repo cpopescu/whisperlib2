@@ -3,10 +3,10 @@
 #include "absl/functional/bind_front.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "whisperlib/status/testing.h"
 #include "whisperlib/sync/moody/blockingconcurrentqueue.h"
 #include "whisperlib/sync/producer_consumer_queue_lockfree.h"
 #include "whisperlib/sync/thread.h"
-#include "whisperlib/status/testing.h"
 
 namespace whisper {
 namespace synch {

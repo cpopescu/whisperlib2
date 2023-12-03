@@ -81,7 +81,7 @@ http_archive(
 )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
-rules_foreign_cc_dependencies()
+rules_foreign_cc_dependencies(register_built_tools=False)
 
 ## ICU
 http_archive(

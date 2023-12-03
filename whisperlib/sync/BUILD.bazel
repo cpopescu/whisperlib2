@@ -30,11 +30,10 @@ cc_test(
     name = "producer_consumer_queue_test",
     srcs = ["producer_consumer_queue_test.cc"],
     deps = [
+        "//whisperlib/status:testing",
         "//whisperlib/sync",
         "//whisperlib/sync/moody",
-        "//whisperlib/status:testing",
         "@com_google_absl//absl/functional:bind_front",
         "@com_google_googletest//:gtest_main",
     ],
 )
-

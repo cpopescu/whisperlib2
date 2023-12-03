@@ -1,10 +1,9 @@
 #ifndef WHISPERLIB_NET_SELECTABLE_H_
 #define WHISPERLIB_NET_SELECTABLE_H_
 
-#include "whisperlib/net/selector_event_data.h"
-
 #include "absl/status/statusor.h"
 #include "absl/strings/cord.h"
+#include "whisperlib/net/selector_event_data.h"
 
 namespace whisper {
 namespace net {
@@ -30,21 +29,15 @@ class Selectable {
   // Signal that informs the selectable object that it should read from its
   // registered file descriptor.
   // Return true if events should be contiued to be processed for object.
-  virtual bool HandleReadEvent(SelectorEventData event) {
-    return true;
-  }
+  virtual bool HandleReadEvent(SelectorEventData event) { return true; }
 
   // Signal that informs the selectable object that it can write data out.
   // Return true if events should be contiued to be processed for object.
-  virtual bool HandleWriteEvent(SelectorEventData event) {
-    return true;
-  }
+  virtual bool HandleWriteEvent(SelectorEventData event) { return true; }
 
   // Signal an error(exception) has occurred on the file descriptor.
   // Return true if events should be contiued to be processed for object.
-  virtual bool HandleErrorEvent(SelectorEventData event) {
-    return true;
-  }
+  virtual bool HandleErrorEvent(SelectorEventData event) { return true; }
 
   // Returns the file descriptor associated w/ this Selectable object (if any)
   virtual int GetFd() const = 0;

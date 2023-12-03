@@ -51,8 +51,7 @@ absl::Status Mv(absl::string_view src_path, absl::string_view dest_dir,
 // Renames a file. This is atomic on Linux in all cases. On Windows,
 // if new_path exists, and overwrite is true, we need to remove the new_path
 // first, so the operation is **NOT** atomic.
-absl::Status Rename(absl::string_view old_path,
-                    absl::string_view new_path,
+absl::Status Rename(absl::string_view old_path, absl::string_view new_path,
                     bool overwrite = false);
 
 // Creates a symbolic link link_path, pointing to target_path.
@@ -60,8 +59,8 @@ absl::Status Rename(absl::string_view old_path,
 absl::Status Symlink(absl::string_view link_path,
                      absl::string_view target_path);
 
-static constexpr mode_t kDefaultMode = (
-  S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+static constexpr mode_t kDefaultMode =
+    (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
 // Creates a directory on disk.
 // recursive: if true => creates all directories on path "dir"
@@ -86,8 +85,9 @@ enum DirListAttributes {
   // look into subdirectories
   LIST_RECURSIVE = 0x80,
 };
-absl::StatusOr<std::vector<std::string>> DirList(
-  absl::string_view dir, uint32_t list_attr, size_t max_depth = 20);
+absl::StatusOr<std::vector<std::string>> DirList(absl::string_view dir,
+                                                 uint32_t list_attr,
+                                                 size_t max_depth = 20);
 
 }  // namespace io
 }  // namespace whisper

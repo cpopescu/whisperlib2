@@ -1,6 +1,7 @@
 #include "whisperlib/io/path.h"
 
 #include <vector>
+
 #include "absl/strings/str_replace.h"
 #include "gtest/gtest.h"
 
@@ -9,7 +10,7 @@ namespace path {
 
 namespace {
 std::string _p(absl::string_view path) {
-  return absl::StrReplaceAll(path, { {"/", whisper::path::kDirSeparatorStr} });
+  return absl::StrReplaceAll(path, {{"/", whisper::path::kDirSeparatorStr}});
 }
 }  // namespace
 
@@ -53,8 +54,7 @@ TEST(WhisperPath, Normalize) {
   EXPECT_EQ(Normalize(_p("f/b/../")), _p("f/"));
   EXPECT_EQ(Normalize(_p("f/b/../a")), _p("f/a"));
   EXPECT_EQ(Normalize(_p("foo/bar/blah/../..")), _p("foo"));
-  EXPECT_EQ(Normalize(_p("foo/bar/blah/../../bletch")),
-            _p("foo/bletch"));
+  EXPECT_EQ(Normalize(_p("foo/bar/blah/../../bletch")), _p("foo/bletch"));
   EXPECT_EQ(Normalize(_p("//net")), _p("//net"));
   EXPECT_EQ(Normalize(_p("//net/")), _p("//net/"));
   EXPECT_EQ(Normalize(_p("//..net")), _p("//..net"));
@@ -64,32 +64,20 @@ TEST(WhisperPath, Normalize) {
   EXPECT_EQ(Normalize(_p("//net/foo/..")), _p("//net"));
   EXPECT_EQ(Normalize(_p("//net/foo/../")), _p("//net/"));
 
-  EXPECT_EQ(Normalize(_p("/net/foo/bar")),
-            _p("/net/foo/bar"));
-  EXPECT_EQ(Normalize(_p("/net/foo/bar/")),
-            _p("/net/foo/bar/"));
-  EXPECT_EQ(Normalize(_p("/net/foo/..")),
-            _p("/net"));
-  EXPECT_EQ(Normalize(_p("/net/foo/../")),
-            _p("/net/"));
+  EXPECT_EQ(Normalize(_p("/net/foo/bar")), _p("/net/foo/bar"));
+  EXPECT_EQ(Normalize(_p("/net/foo/bar/")), _p("/net/foo/bar/"));
+  EXPECT_EQ(Normalize(_p("/net/foo/..")), _p("/net"));
+  EXPECT_EQ(Normalize(_p("/net/foo/../")), _p("/net/"));
 
-  EXPECT_EQ(Normalize(_p("//net//foo//bar")),
-            _p("//net/foo/bar"));
-  EXPECT_EQ(Normalize(_p("//net//foo//bar//")),
-            _p("//net/foo/bar/"));
-  EXPECT_EQ(Normalize(_p("//net//foo//..")),
-            _p("//net"));
-  EXPECT_EQ(Normalize(_p("//net//foo//..//")),
-            _p("//net/"));
+  EXPECT_EQ(Normalize(_p("//net//foo//bar")), _p("//net/foo/bar"));
+  EXPECT_EQ(Normalize(_p("//net//foo//bar//")), _p("//net/foo/bar/"));
+  EXPECT_EQ(Normalize(_p("//net//foo//..")), _p("//net"));
+  EXPECT_EQ(Normalize(_p("//net//foo//..//")), _p("//net/"));
 
-  EXPECT_EQ(Normalize(_p("///net///foo///bar")),
-            _p("/net/foo/bar"));
-  EXPECT_EQ(Normalize(_p("///net///foo///bar///")),
-            _p("/net/foo/bar/"));
-  EXPECT_EQ(Normalize(_p("///net///foo///..")),
-            _p("/net"));
-  EXPECT_EQ(Normalize(_p("///net///foo///..///")),
-            _p("/net/"));
+  EXPECT_EQ(Normalize(_p("///net///foo///bar")), _p("/net/foo/bar"));
+  EXPECT_EQ(Normalize(_p("///net///foo///bar///")), _p("/net/foo/bar/"));
+  EXPECT_EQ(Normalize(_p("///net///foo///..")), _p("/net"));
+  EXPECT_EQ(Normalize(_p("///net///foo///..///")), _p("/net/"));
 
   ///////////////////////////////////////////////////////////////////////
 
@@ -132,8 +120,7 @@ TEST(WhisperPath, Normalize) {
   EXPECT_EQ(Normalize("f#b#..#", '#'), "f#");
   EXPECT_EQ(Normalize("f#b#..#a", '#'), "f#a");
   EXPECT_EQ(Normalize("foo#bar#blah#..#..", '#'), "foo");
-  EXPECT_EQ(Normalize("foo#bar#blah#..#..#bletch", '#'),
-            "foo#bletch");
+  EXPECT_EQ(Normalize("foo#bar#blah#..#..#bletch", '#'), "foo#bletch");
   EXPECT_EQ(Normalize("##net", '#'), "##net");
   EXPECT_EQ(Normalize("##net#", '#'), "##net#");
   EXPECT_EQ(Normalize("##..net", '#'), "##..net");
@@ -143,32 +130,20 @@ TEST(WhisperPath, Normalize) {
   EXPECT_EQ(Normalize("##net#foo#..", '#'), "##net");
   EXPECT_EQ(Normalize("##net#foo#..#", '#'), "##net#");
 
-  EXPECT_EQ(Normalize("#net#foo#bar", '#'),
-            "#net#foo#bar");
-  EXPECT_EQ(Normalize("#net#foo#bar#", '#'),
-            "#net#foo#bar#");
-  EXPECT_EQ(Normalize("#net#foo#..", '#'),
-            "#net");
-  EXPECT_EQ(Normalize("#net#foo#..#", '#'),
-            "#net#");
+  EXPECT_EQ(Normalize("#net#foo#bar", '#'), "#net#foo#bar");
+  EXPECT_EQ(Normalize("#net#foo#bar#", '#'), "#net#foo#bar#");
+  EXPECT_EQ(Normalize("#net#foo#..", '#'), "#net");
+  EXPECT_EQ(Normalize("#net#foo#..#", '#'), "#net#");
 
-  EXPECT_EQ(Normalize("##net##foo##bar", '#'),
-            "##net#foo#bar");
-  EXPECT_EQ(Normalize("##net##foo##bar##", '#'),
-            "##net#foo#bar#");
-  EXPECT_EQ(Normalize("##net##foo##..", '#'),
-            "##net");
-  EXPECT_EQ(Normalize("##net##foo##..##", '#'),
-            "##net#");
+  EXPECT_EQ(Normalize("##net##foo##bar", '#'), "##net#foo#bar");
+  EXPECT_EQ(Normalize("##net##foo##bar##", '#'), "##net#foo#bar#");
+  EXPECT_EQ(Normalize("##net##foo##..", '#'), "##net");
+  EXPECT_EQ(Normalize("##net##foo##..##", '#'), "##net#");
 
-  EXPECT_EQ(Normalize("###net###foo###bar", '#'),
-            "#net#foo#bar");
-  EXPECT_EQ(Normalize("###net###foo###bar###", '#'),
-            "#net#foo#bar#");
-  EXPECT_EQ(Normalize("###net###foo###..", '#'),
-            "#net");
-  EXPECT_EQ(Normalize("###net###foo###..###", '#'),
-            "#net#");
+  EXPECT_EQ(Normalize("###net###foo###bar", '#'), "#net#foo#bar");
+  EXPECT_EQ(Normalize("###net###foo###bar###", '#'), "#net#foo#bar#");
+  EXPECT_EQ(Normalize("###net###foo###..", '#'), "#net");
+  EXPECT_EQ(Normalize("###net###foo###..###", '#'), "#net#");
 }
 
 TEST(WhisperPath, Basename) {
@@ -199,8 +174,7 @@ TEST(WhisperPath, Join) {
   EXPECT_EQ(Join(_p("/"), _p("/b")), _p("//b"));
   EXPECT_EQ(Join(_p("/a"), _p("b")), _p("/a/b"));
   EXPECT_EQ(Join(_p("/a"), _p("/b")), _p("/a/b"));
-  EXPECT_EQ(Normalize(
-              Join(_p("/a/b"), _p("//c//d//"))), _p("/a/b/c/d/"));
+  EXPECT_EQ(Normalize(Join(_p("/a/b"), _p("//c//d//"))), _p("/a/b/c/d/"));
   EXPECT_EQ(Join(_p("a"), _p("b")), _p("a/b"));
   EXPECT_EQ(Join(_p("a"), _p("/b")), _p("a/b"));
   EXPECT_EQ(Join(_p("a/"), _p("b/")), _p("a/b/"));

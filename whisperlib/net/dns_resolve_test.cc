@@ -15,7 +15,7 @@ TEST(DnsHostInfo, BasicOps) {
   }
   for (uint32_t i = 0; i < 10; ++i) {
     ipv6.emplace_back(
-        IpAddress::ParseFromString(absl::StrCat("::",  (1 + i))).value());
+        IpAddress::ParseFromString(absl::StrCat("::", (1 + i))).value());
   }
   {
     DnsHostInfo hi("foo");
@@ -113,7 +113,7 @@ TEST(DnsHostInfo, Punycode) {
 
 TEST(DnsResolver, Resolve) {
   auto& resolver = DnsResolver::Default();
-  for (auto hostname : { "www.google.com" }) {
+  for (auto hostname : {"www.google.com"}) {
     // , "中国移动.中国", "президент.рф" }) {
     for (size_t i = 0; i < 30; ++i) {
       absl::Time start = absl::Now();
@@ -124,9 +124,8 @@ TEST(DnsResolver, Resolve) {
   }
 }
 
-void ResolveDone(
-    std::atomic_size_t* count,
-    absl::StatusOr<std::shared_ptr<DnsHostInfo>> data) {
+void ResolveDone(std::atomic_size_t* count,
+                 absl::StatusOr<std::shared_ptr<DnsHostInfo>> data) {
   if (data.ok()) {
     count->fetch_add(1);
     LOG(INFO) << "Resolved async: " << data.value()->ToString();
@@ -140,8 +139,8 @@ TEST(DnsResolver, ResolveAsync) {
   {
     DnsResolver resolve({});
     for (size_t i = 0; i < 30; ++i) {
-      resolve.ResolveAsync("www.google.com", absl::bind_front(
-          &ResolveDone, &count));
+      resolve.ResolveAsync("www.google.com",
+                           absl::bind_front(&ResolveDone, &count));
     }
     LOG(INFO) << "Resolves issued.";
   }

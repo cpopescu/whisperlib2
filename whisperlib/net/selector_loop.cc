@@ -17,33 +17,29 @@ int PollTimeout(absl::Duration timeout) {
 #ifdef HAVE_EPOLL
 absl::StatusOr<std::unique_ptr<EpollSelectorLoop>> EpollSelectorLoop::Create(
     int signal_fd, size_t max_events_per_step) {
-  auto loop = absl::WrapUnique(
-      new EpollSelectorLoop(signal_fd, max_events_per_step));
+  auto loop =
+      absl::WrapUnique(new EpollSelectorLoop(signal_fd, max_events_per_step));
   RETURN_IF_ERROR(loop->Initialize());
   return loop;
 }
 
-EpollSelectorLoop::EpollSelectorLoop(int signal_fd,
-                                     size_t max_events_per_step)
-  : signal_fd_(signal_fd),
-    events_(max_events_per_step) {
-}
+EpollSelectorLoop::EpollSelectorLoop(int signal_fd, size_t max_events_per_step)
+    : signal_fd_(signal_fd), events_(max_events_per_step) {}
 
-EpollSelectorLoop::~EpollSelectorLoop() {
-  close(epfd_);
-}
+EpollSelectorLoop::~EpollSelectorLoop() { close(epfd_); }
 
 absl::Status EpollSelectorLoop::Initialize() {
   // argument outdated anyway - needs to be > 0
   epfd_ = ::epoll_create(1);
   if (epfd_ < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "Creating epoll file descriptor during ::epoll_create()";
+           << "Creating epoll file descriptor during ::epoll_create()";
   }
   RETURN_IF_ERROR(Add(signal_fd_, nullptr,
                       SelectDesire::kWantRead | SelectDesire::kWantError))
-    << "Adding the signaling file descriptor " << signal_fd_ << " while "
-    "creating the selector loop.";
+      << "Adding the signaling file descriptor " << signal_fd_
+      << " while "
+         "creating the selector loop.";
   return absl::OkStatus();
 }
 
@@ -55,14 +51,14 @@ absl::Status EpollSelectorLoop::Add(int fd, void* user_data, uint32_t desires) {
 
   if (epoll_ctl(epfd_, EPOLL_CTL_ADD, fd, &event) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "Adding event to epoll structure; file descriptor: " << fd
-      << " for events: " << event.events;
+           << "Adding event to epoll structure; file descriptor: " << fd
+           << " for events: " << event.events;
   }
   return absl::OkStatus();
 }
 
-absl::Status EpollSelectorLoop::Update(
-    int fd, void* user_data, uint32_t desires) {
+absl::Status EpollSelectorLoop::Update(int fd, void* user_data,
+                                       uint32_t desires) {
   RET_CHECK(fd >= 0) << "Invalid file descriptor cannot be updated in epoll.";
   epoll_event event;
   event.events = static_cast<unsigned int>(DesiresToEpollEvents(desires));
@@ -70,18 +66,20 @@ absl::Status EpollSelectorLoop::Update(
 
   if (epoll_ctl(epfd_, EPOLL_CTL_MOD, fd, &event)) {
     return error::ErrnoToStatus(error::Errno())
-      << "Updating event to epoll structure; file descriptor: " << fd
-      << " for events: " << event.events;
+           << "Updating event to epoll structure; file descriptor: " << fd
+           << " for events: " << event.events;
   }
   return absl::OkStatus();
 }
 
 absl::Status EpollSelectorLoop::Delete(int fd) {
   RET_CHECK(fd >= 0) << "Invalid file descriptor cannot be deleted from epoll.";
-  epoll_event event = { 0, };
+  epoll_event event = {
+      0,
+  };
   if (epoll_ctl(epfd_, EPOLL_CTL_DEL, fd, &event) < 0) {
     return error::ErrnoToStatus(error::Errno())
-      << "Deleting event to epoll structure; file descriptor: " << fd;
+           << "Deleting event to epoll structure; file descriptor: " << fd;
   }
   return absl::OkStatus();
 }
@@ -100,13 +98,13 @@ uint32_t EpollSelectorLoop::DesiresToEpollEvents(uint32_t desires) {
   return events;
 }
 
-absl::StatusOr<std::vector<SelectorEventData>>
-EpollSelectorLoop::LoopStep(absl::Duration timeout) {
-  const int num_events = epoll_wait(epfd_, &events_[0], events_.size(),
-                                    PollTimeout(timeout));
+absl::StatusOr<std::vector<SelectorEventData>> EpollSelectorLoop::LoopStep(
+    absl::Duration timeout) {
+  const int num_events =
+      epoll_wait(epfd_, &events_[0], events_.size(), PollTimeout(timeout));
   if (num_events < 0 && errno != EINTR) {
     return error::ErrnoToStatus(error::Errno())
-      << "Encountered during epoll_wait.";
+           << "Encountered during epoll_wait.";
   }
   std::vector<SelectorEventData> events;
   events.reserve(num_events);
@@ -122,8 +120,7 @@ EpollSelectorLoop::LoopStep(absl::Duration timeout) {
     if (event.events & EPOLLOUT) {
       desire |= SelectDesire::kWantWrite;
     }
-    events.push_back(SelectorEventData {
-        event.data.ptr, desire, event.events });
+    events.push_back(SelectorEventData{event.data.ptr, desire, event.events});
   }
   return events;
 }
@@ -144,9 +141,7 @@ bool EpollSelectorLoop::IsInputEvent(int event_value) const {
 }
 #endif  // HAVE_EPOLL
 
-PollSelectorLoop::PollSelectorLoop(int signal_fd)
-  : signal_fd_(signal_fd) {
-}
+PollSelectorLoop::PollSelectorLoop(int signal_fd) : signal_fd_(signal_fd) {}
 
 const size_t PollSelectorLoop::kMaxFds;
 
@@ -160,8 +155,9 @@ absl::StatusOr<std::unique_ptr<PollSelectorLoop>> PollSelectorLoop::Create(
 absl::Status PollSelectorLoop::Initialize() {
   RETURN_IF_ERROR(Add(signal_fd_, nullptr,
                       SelectDesire::kWantRead | SelectDesire::kWantError))
-    << "Adding the signaling file descriptor " << signal_fd_ << " while "
-    "creating the selector loop.";
+      << "Adding the signaling file descriptor " << signal_fd_
+      << " while "
+         "creating the selector loop.";
   return absl::OkStatus();
 }
 
@@ -171,8 +167,10 @@ absl::Status PollSelectorLoop::Add(int fd, void* user_data, uint32_t desires) {
   RET_CHECK(fd >= 0) << "Invalid file descriptor cannot be added to epoll.";
   if (fds_size_ >= kMaxFds) {
     return status::ResourceExhaustedErrorBuilder()
-      << "Too many file descriptors in the poll structure. Reached the limit "
-      "of " << kMaxFds << " file descriptors.";
+           << "Too many file descriptors in the poll structure. Reached the "
+              "limit "
+              "of "
+           << kMaxFds << " file descriptors.";
   }
   fds_[fds_size_].fd = fd;
   fds_[fds_size_].events = DesiresToPollEvents(desires);
@@ -182,13 +180,14 @@ absl::Status PollSelectorLoop::Add(int fd, void* user_data, uint32_t desires) {
   return absl::OkStatus();
 }
 
-absl::Status PollSelectorLoop::Update(
-    int fd, void* user_data, uint32_t desires) {
+absl::Status PollSelectorLoop::Update(int fd, void* user_data,
+                                      uint32_t desires) {
   auto it = fd_data_.find(fd);
   if (it == fd_data_.end()) {
     return status::NotFoundErrorBuilder()
-      << "Cannot update select data for file descriptor: " << fd << " as it "
-      "cannot be found in poll selector registered file descriptors.";
+           << "Cannot update select data for file descriptor: " << fd
+           << " as it "
+              "cannot be found in poll selector registered file descriptors.";
   }
   const size_t index = it->second.first;
   fds_[index].events = DesiresToPollEvents(desires);
@@ -200,8 +199,9 @@ absl::Status PollSelectorLoop::Delete(int fd) {
   auto it = fd_data_.find(fd);
   if (it == fd_data_.end()) {
     return status::NotFoundErrorBuilder()
-      << "Cannot delete select data for file descriptor: " << fd << " as it "
-      "cannot be found in poll selector registered file descriptors.";
+           << "Cannot delete select data for file descriptor: " << fd
+           << " as it "
+              "cannot be found in poll selector registered file descriptors.";
   }
   const size_t index = it->second.first;
   // We don't compact now, as we may loose processing for these events
@@ -248,17 +248,16 @@ int PollSelectorLoop::DesiresToPollEvents(uint32_t desires) {
   return events;
 }
 
-absl::StatusOr<std::vector<SelectorEventData>>
-PollSelectorLoop::LoopStep(absl::Duration timeout) {
+absl::StatusOr<std::vector<SelectorEventData>> PollSelectorLoop::LoopStep(
+    absl::Duration timeout) {
   Compact();
   int num_events = poll(fds_, fds_size_, PollTimeout(timeout));
   if (num_events < 0 && errno != EINTR) {
-    return error::ErrnoToStatus(error::Errno())
-      << "Encountered during poll.";
+    return error::ErrnoToStatus(error::Errno()) << "Encountered during poll.";
   }
   std::vector<SelectorEventData> events;
   events.reserve(num_events);
-  for (size_t i = 0; i < fds_size_ && num_events > 0 ; ++i) {
+  for (size_t i = 0; i < fds_size_ && num_events > 0; ++i) {
     const struct pollfd& event = fds_[i];
     if (event.revents == 0) {
       continue;
@@ -275,8 +274,8 @@ PollSelectorLoop::LoopStep(absl::Duration timeout) {
     }
     const DataMap::iterator it = fd_data_.find(event.fd);
     if (it != fd_data_.end()) {
-      events.push_back(SelectorEventData {
-          it->second.second, desire, uint32_t(event.revents) });
+      events.push_back(SelectorEventData{it->second.second, desire,
+                                         uint32_t(event.revents)});
     }
     --num_events;
   }
@@ -304,7 +303,6 @@ bool PollSelectorLoop::IsInputEvent(int event_value) const {
 static const int kKQueueHangUp = 1;
 static const int kKQueueErrorEvent = 2;
 static const int kKQueueInputEvent = 4;
-
 
 bool KQueueSelectorLoop::IsHangUpEvent(int event_value) const {
   return (event_value & kKQueueHangUp) != 0;

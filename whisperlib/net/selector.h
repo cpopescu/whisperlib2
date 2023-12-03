@@ -14,9 +14,8 @@
 #include "absl/synchronization/mutex.h"
 #include "absl/time/time.h"
 #include "whisperlib/net/selectable.h"
-#include "whisperlib/net/selector_loop.h"
 #include "whisperlib/net/selector_event_data.h"
-
+#include "whisperlib/net/selector_loop.h"
 
 namespace whisper {
 namespace net {
@@ -128,10 +127,12 @@ class Selector {
   // NOTE: safe to call from any thread.
   void RunInSelectLoop(std::function<void()> callback);
   // Schedules the deletion of the provided object in the select loop.
-  template <typename T> void DeleteInSelectLoop(T* t) {
+  template <typename T>
+  void DeleteInSelectLoop(T* t) {
     RunInSelectLoop([t]() { delete t; });
   }
-  template <typename T> void DeleteInSelectLoop(std::unique_ptr<T> t) {
+  template <typename T>
+  void DeleteInSelectLoop(std::unique_ptr<T> t) {
     // TODO(cp): use a helper object to be able to move this in c++11.
     T* pt = t.release();
     RunInSelectLoop([t]() { delete t; });
@@ -141,8 +142,7 @@ class Selector {
   // Runs the provided function after a timeout in the select loop.
   // Returns an alarm_id that can be used to unregister the alarm.
   // NOTE: safe to call from any thread.
-  AlarmId RegisterAlarm(std::function<void()> callback,
-                        absl::Duration timeout);
+  AlarmId RegisterAlarm(std::function<void()> callback, absl::Duration timeout);
   // Unregistered a previously registered alarm.
   // NOTE: safe to call from any thread.
   void UnregisterAlarm(AlarmId alarm_id);
@@ -166,7 +166,7 @@ class Selector {
 
   ~Selector();
 
-private:
+ private:
   Selector(Params params);
 
   // Initializes the selector object.
@@ -184,8 +184,7 @@ private:
   // Updates the now_ to current time.
   void UpdateNow();
   // Pops some callbacks to be run from to_run_ queue.
-  std::deque<std::function<void()>> PopCallbacks(
-      size_t max_num_to_run);
+  std::deque<std::function<void()>> PopCallbacks(size_t max_num_to_run);
   // Prepends the callbacks in to_run to the internal to_run_ queue.
   void PrependCallbacks(std::deque<std::function<void()>>* to_run);
   // Cleans the bytes in the signaling file descriptor.
@@ -231,29 +230,29 @@ private:
   std::atomic_uint64_t alarm_id_ = ATOMIC_VAR_INIT(0);
   // Maps from alarm id to alarm callback.
   absl::flat_hash_map<AlarmId, std::function<void()>> alarms_
-  ABSL_GUARDED_BY(alarm_mutex_);
+      ABSL_GUARDED_BY(alarm_mutex_);
   // Heap of alarm times and alarm ids.
   std::vector<std::pair<absl::Time, AlarmId>> alarm_timeouts_
-  ABSL_GUARDED_BY(alarm_mutex_);
+      ABSL_GUARDED_BY(alarm_mutex_);
   // The next alarm time - top of the alarm_timeouts_ heap.
   // This is the nanos of the time - cannot use atomic<absl::Time> on all
   // architectures.
   std::atomic<int64_t> next_alarm_time_ =
-    ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfiniteFuture()));
+      ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfiniteFuture()));
   // Number of registered alarms - for quick checking.
   std::atomic_size_t num_registered_alarms_ = ATOMIC_VAR_INIT(0);
   // We call this function upon exiting loop.
   std::function<void()> call_on_close_ = nullptr;
   // The last time we broke the loop.
   std::atomic<int64_t> now_ =
-    ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
+      ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
 };
 
 class SelectorThread {
  public:
   // Creates a *stopped* selector thread.
-  static absl::StatusOr<std::unique_ptr<SelectorThread>>
-  Create(Selector::Params params = {});
+  static absl::StatusOr<std::unique_ptr<SelectorThread>> Create(
+      Selector::Params params = {});
 
   // Starts the selector in the side thread.
   // Returns true if started now, false if it is already started.

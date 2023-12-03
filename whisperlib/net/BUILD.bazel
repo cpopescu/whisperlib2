@@ -17,14 +17,16 @@ cc_library(
         "connection.h",
         "dns_resolve.h",
         "selectable.h",
-        "selector_event_data.h",
         "selector.h",
+        "selector_event_data.h",
         "selector_loop.h",
         "ssl_connection.h",
         "timeouter.h",
     ],
+    linkopts = ["-ldl"],
     visibility = ["//visibility:public"],
     deps = [
+        "//third_party/icu/data:icu_normalization_data",
         "//whisperlib/base",
         "//whisperlib/io",
         "//whisperlib/io:errno",
@@ -40,10 +42,8 @@ cc_library(
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
         "@icu//:common",
-        "//third_party/icu/data:icu_normalization_data",
-        "@openssl//:openssl",
+        "@openssl",
     ],
-    linkopts = ["-ldl"],
 )
 
 cc_test(

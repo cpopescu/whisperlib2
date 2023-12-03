@@ -2,6 +2,7 @@
 #define WHISPERLIB_NET_CONNECTION_H_
 
 #include <memory>
+
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "absl/types/optional.h"
@@ -31,7 +32,10 @@ class Acceptor {
   // consumption.
   virtual std::string ToString() const = 0;
 
-  enum State { DISCONNECTED, LISTENING, };
+  enum State {
+    DISCONNECTED,
+    LISTENING,
+  };
   static absl::string_view StateName(State s);
 
   // The current state:
@@ -98,7 +102,7 @@ class Acceptor {
 };
 
 class Connection {
-public:
+ public:
   explicit Connection(Selector* net_selector);
   virtual ~Connection() = default;
 
@@ -132,7 +136,13 @@ public:
 
   //////////////////// Accessors
 
-  enum State { DISCONNECTED, RESOLVING, CONNECTING, CONNECTED, FLUSHING, };
+  enum State {
+    DISCONNECTED,
+    RESOLVING,
+    CONNECTING,
+    CONNECTED,
+    FLUSHING,
+  };
   static absl::string_view StateName(State value);
 
   // Returns the currently associated selector.
@@ -173,7 +183,11 @@ public:
   Connection& clear_write_handler();
 
   // What to close in a connection: read half / write half / both.
-  enum CloseDirective { CLOSE_READ, CLOSE_WRITE, CLOSE_READ_WRITE, };
+  enum CloseDirective {
+    CLOSE_READ,
+    CLOSE_WRITE,
+    CLOSE_READ_WRITE,
+  };
   static absl::string_view CloseDirectiveName(CloseDirective value);
 
   // Handling of a close directive request:
@@ -270,11 +284,11 @@ class AcceptorThreads {
  public:
   AcceptorThreads() = default;
   AcceptorThreads(AcceptorThreads&& other)
-    : next_client_thread_(other.next_client_thread_.load()),
-      client_threads_(std::move(other.client_threads_)) {}
+      : next_client_thread_(other.next_client_thread_.load()),
+        client_threads_(std::move(other.client_threads_)) {}
   AcceptorThreads(const AcceptorThreads& other)
-    : next_client_thread_(other.next_client_thread_.load()),
-      client_threads_(other.client_threads_) {}
+      : next_client_thread_(other.next_client_thread_.load()),
+        client_threads_(other.client_threads_) {}
   AcceptorThreads& operator=(AcceptorThreads&& other) {
     next_client_thread_.store(other.next_client_thread_.load());
     client_threads_ = std::move(other.client_threads_);
@@ -364,9 +378,7 @@ class TcpAcceptor : public Acceptor, private Selectable {
   Statistics stats_;
 };
 
-class TcpConnection
-  : public Connection,
-    private Selectable {
+class TcpConnection : public Connection, private Selectable {
  public:
   TcpConnection(Selector* selector, TcpConnectionParams params);
   virtual ~TcpConnection();
@@ -388,7 +400,6 @@ class TcpConnection
   void CloseCommunication(CloseDirective directive);
 
  private:
-
   ////////// Selectable interface methods
   // - Should be called from the selector thread.
   bool HandleReadEvent(SelectorEventData event) override;
@@ -448,10 +459,10 @@ class TcpConnection
   std::atomic_bool read_closed_ = ATOMIC_VAR_INIT(false);
   // Timestamp of the last read event
   std::atomic_int64_t last_read_ts_ =
-    ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
+      ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
   // Timestamp of the last write event
   std::atomic_int64_t last_write_ts_ =
-    ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
+      ATOMIC_VAR_INIT(absl::ToUnixNanos(absl::InfinitePast()));
   // Raises timeouts for this connection.
   Timeouter timeouter_;
   // Set if a close is requested while doing dns resolve.

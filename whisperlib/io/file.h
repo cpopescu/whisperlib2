@@ -4,10 +4,10 @@
 #include <memory>
 #include <string>
 
-#include "absl/strings/cord.h"
-#include "absl/strings/string_view.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
+#include "absl/strings/cord.h"
+#include "absl/strings/string_view.h"
 #include "absl/types/optional.h"
 
 static_assert(sizeof(off_t) == sizeof(int64_t));
@@ -17,11 +17,7 @@ namespace io {
 
 class File {
  public:
-  enum Access {
-    GENERIC_READ,
-    GENERIC_WRITE,
-    GENERIC_READ_WRITE
-  };
+  enum Access { GENERIC_READ, GENERIC_WRITE, GENERIC_READ_WRITE };
   static absl::string_view AccessName(Access access);
 
   enum CreationDisposition {
@@ -61,24 +57,23 @@ class File {
   static absl::StatusOr<std::unique_ptr<File>> Create(
       absl::string_view filename);
   // Convenience function for opening a file for reading
-  static absl::StatusOr<std::unique_ptr<File>> Open(
-      absl::string_view filename);
+  static absl::StatusOr<std::unique_ptr<File>> Open(absl::string_view filename);
 
   // Reads a file as a string. Reads at most length bytes.
-  static absl::StatusOr<std::string> ReadAsString(
-      absl::string_view filename, size_t max_size = 4 << 20);
+  static absl::StatusOr<std::string> ReadAsString(absl::string_view filename,
+                                                  size_t max_size = 4 << 20);
   // Writes the specified data to a file. If file exists, the data will be
   // overwritten.
-  static absl::StatusOr<size_t> WriteFromString(
-      absl::string_view filename, absl::string_view data);
+  static absl::StatusOr<size_t> WriteFromString(absl::string_view filename,
+                                                absl::string_view data);
 
   File() = default;
   virtual ~File();
 
   // Opens the file specified by name, with provided access and opening
   // creation disposition. The file should not be already opened.
-  absl::Status Open(absl::string_view filename,
-                    Access access, CreationDisposition cd);
+  absl::Status Open(absl::string_view filename, Access access,
+                    CreationDisposition cd);
   // Set the file from an externally opened file descriptor.
   // The file should not be already opened.
   absl::Status Set(absl::string_view filename, int fd);
@@ -86,17 +81,11 @@ class File {
   absl::Status Close();
 
   // If the file is opened.
-  bool is_open() const {
-    return fd_ != kInvalidFdValue;
-  }
+  bool is_open() const { return fd_ != kInvalidFdValue; }
   // The name of the file (path).
-  absl::string_view filename() const {
-    return filename_;
-  }
+  absl::string_view filename() const { return filename_; }
   // The file descriptor of this file.
-  int fd() const {
-    return fd_;
-  }
+  int fd() const { return fd_; }
 
   // Returns current file size. The file must be opened.
   // (Uses local cached variable: size_)
@@ -111,8 +100,8 @@ class File {
 
   // Set file pointer position to the given absolute offset (relative
   // to file begin). Returns the new position from the beginning of the file.
-  absl::StatusOr<uint64_t> SetPosition(
-      int64_t distance, MoveMethod move_method = FILE_SET);
+  absl::StatusOr<uint64_t> SetPosition(int64_t distance,
+                                       MoveMethod move_method = FILE_SET);
 
   // Set file pointer to file begin.
   absl::Status Rewind();

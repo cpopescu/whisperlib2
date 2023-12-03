@@ -12,8 +12,8 @@ size_t CordIo::SizeToWrite(const absl::Cord& cord,
   return size_to_write;
 }
 
-std::pair<std::vector<struct ::iovec>, size_t>
-CordIo::ToIovec(const absl::Cord& cord, size_t size) {
+std::pair<std::vector<struct ::iovec>, size_t> CordIo::ToIovec(
+    const absl::Cord& cord, size_t size) {
   size_t cb = 0;
   std::vector<struct ::iovec> result;
   for (absl::string_view chunk : cord.Chunks()) {

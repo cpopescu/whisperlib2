@@ -6,24 +6,24 @@ cc_library(
     hdrs = ["status.h"],
     visibility = ["//visibility:public"],
     deps = [
+        "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/log:die_if_null",
-        "@com_google_absl//absl/log:log",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
-    ]
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_library(
     name = "testing",
+    testonly = 1,
     hdrs = ["testing.h"],
     visibility = ["//visibility:public"],
-    testonly = 1,
     deps = [
         "@com_google_absl//absl/status",
         "@com_google_googletest//:gtest",
-    ]
+    ],
 )
 
 cc_test(
@@ -33,5 +33,5 @@ cc_test(
         ":status",
         ":testing",
         "@com_google_googletest//:gtest_main",
-    ]
+    ],
 )

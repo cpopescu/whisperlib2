@@ -1,9 +1,10 @@
 #include "whisperlib/net/dns_resolve.h"
 
-#include <algorithm>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+
+#include <algorithm>
 
 #include "absl/container/flat_hash_set.h"
 #include "unicode/errorcode.h"
@@ -14,13 +15,9 @@
 namespace whisper {
 namespace net {
 
-DnsHostInfo::DnsHostInfo(absl::string_view hostname)
-  : hostname_(hostname) {
-}
+DnsHostInfo::DnsHostInfo(absl::string_view hostname) : hostname_(hostname) {}
 
-bool DnsHostInfo::IsValid() const {
-  return !ipv4_.empty() || !ipv6_.empty();
-}
+bool DnsHostInfo::IsValid() const { return !ipv4_.empty() || !ipv6_.empty(); }
 
 void DnsHostInfo::SetIpAddress(std::vector<IpAddress> ipv4,
                                std::vector<IpAddress> ipv6) {
@@ -29,16 +26,24 @@ void DnsHostInfo::SetIpAddress(std::vector<IpAddress> ipv4,
 }
 
 absl::optional<IpAddress> DnsHostInfo::PickFirstAddress() const {
-  if (!ipv4_.empty()) { return ipv4_.front(); }
-  if (!ipv6_.empty()) { return ipv6_.front(); }
+  if (!ipv4_.empty()) {
+    return ipv4_.front();
+  }
+  if (!ipv6_.empty()) {
+    return ipv6_.front();
+  }
   return {};
 }
 absl::optional<IpAddress> DnsHostInfo::PickFirstIpv4Address() const {
-  if (!ipv4_.empty()) { return ipv4_.front(); }
+  if (!ipv4_.empty()) {
+    return ipv4_.front();
+  }
   return {};
 }
 absl::optional<IpAddress> DnsHostInfo::PickFirstIpv6Address() const {
-  if (!ipv6_.empty()) { return ipv6_.front(); }
+  if (!ipv6_.empty()) {
+    return ipv6_.front();
+  }
   return {};
 }
 
@@ -66,10 +71,10 @@ absl::optional<IpAddress> DnsHostInfo::PickNextIpv6Address() const {
 namespace {
 const icu::IDNA* CreateIdna() {
   icu::ErrorCode err;
-  const icu::IDNA* idna = icu::IDNA::createUTS46Instance(
-      UIDNA_NONTRANSITIONAL_TO_ASCII, err);
+  const icu::IDNA* idna =
+      icu::IDNA::createUTS46Instance(UIDNA_NONTRANSITIONAL_TO_ASCII, err);
   LOG_IF(ERROR, !err.isSuccess())
-    << "Error creating IDNA icu object: " << err.errorName();
+      << "Error creating IDNA icu object: " << err.errorName();
   return idna;
 }
 }  // namespace
@@ -78,10 +83,11 @@ absl::StatusOr<std::string> DnsHostInfo::GetDnsResolveName() const {
   // Thread safe instance to be used for converting to idna names from
   // utf-8 non-ascii hostnames.
   static const icu::IDNA* idna = CreateIdna();
-  const bool is_ascii = std::all_of(
-      hostname_.begin(), hostname_.end(),
-      [](unsigned char c) { return c < 128; });
-  if (is_ascii) { return std::string(hostname_); }
+  const bool is_ascii = std::all_of(hostname_.begin(), hostname_.end(),
+                                    [](unsigned char c) { return c < 128; });
+  if (is_ascii) {
+    return std::string(hostname_);
+  }
   if (ABSL_PREDICT_FALSE(idna == nullptr)) {
     return absl::InternalError("Error creating IDNA conversion object.");
   }
@@ -92,8 +98,8 @@ absl::StatusOr<std::string> DnsHostInfo::GetDnsResolveName() const {
   idna->nameToASCII_UTF8(hostname_, sink, info, icu_error);
   if (icu_error.isFailure() || info.hasErrors()) {
     return status::InvalidArgumentErrorBuilder()
-      << "Error converting hostname to punycode: " << icu_error.errorName()
-      << " / error bits: " << info.getErrors();
+           << "Error converting hostname to punycode: " << icu_error.errorName()
+           << " / error bits: " << info.getErrors();
   }
   return result;
 }
@@ -104,8 +110,8 @@ std::string DnsHostInfo::ToString() const {
   if (resolve_name.ok()) {
     absl::StrAppend(&s, "DNS resolve name: `", resolve_name.value(), "`\n");
   } else {
-    absl::StrAppend(&s, "Error DNS name: `",
-                    resolve_name.status().message(), "`\n");
+    absl::StrAppend(&s, "Error DNS name: `", resolve_name.status().message(),
+                    "`\n");
   }
   for (const auto& ip : ipv4_) {
     absl::StrAppend(&s, "  IPv4: ", ip.ToString(), "\n");
@@ -115,7 +121,6 @@ std::string DnsHostInfo::ToString() const {
   }
   return s;
 }
-
 
 DnsResolverOptions& DnsResolverOptions::set_num_threads(size_t value) {
   num_threads = value;
@@ -135,18 +140,17 @@ DnsResolver& DnsResolver::Default() {
   return *kResolver;
 }
 
-
 DnsResolver::DnsResolver(const DnsResolverOptions& options)
-  : options_(options) {
+    : options_(options) {
   CHECK_GT(options_.num_threads, 0UL);
   CHECK_GT(options_.queue_size, 0UL);
   threads_.reserve(options_.num_threads);
   resolves_.reserve(options_.num_threads);
   for (size_t i = 0; i < options_.num_threads; ++i) {
-    threads_.emplace_back(absl::make_unique<std::thread>(
-        &DnsResolver::RunResolve, this, i));
-    resolves_.emplace_back(absl::make_unique<ResolveQueue>(
-        options_.queue_size));
+    threads_.emplace_back(
+        absl::make_unique<std::thread>(&DnsResolver::RunResolve, this, i));
+    resolves_.emplace_back(
+        absl::make_unique<ResolveQueue>(options_.queue_size));
   }
 }
 DnsResolver::~DnsResolver() {
@@ -168,11 +172,11 @@ void DnsResolver::RunResolve(size_t index) {
   }
 }
 
-void DnsResolver::ResolveAsync(
-    absl::string_view hostname, DnsCallback callback) {
+void DnsResolver::ResolveAsync(absl::string_view hostname,
+                               DnsCallback callback) {
   const size_t index = resolve_index_.fetch_add(1) % resolves_.size();
-  if (!resolves_[index]->Put(std::make_pair(
-          std::string(hostname), callback), options_.put_timeout)) {
+  if (!resolves_[index]->Put(std::make_pair(std::string(hostname), callback),
+                             options_.put_timeout)) {
     callback(absl::InternalError("Asynchronous resolve queue is full."));
   }
 }
@@ -180,66 +184,69 @@ void DnsResolver::ResolveAsync(
 namespace {
 status::StatusWriter AddrInfoToStatus(int err) {
   switch (err) {
-  case EAI_ADDRFAMILY:
-    return status::InvalidArgumentErrorBuilder()
-      << "[EAI_ADDRFAMILY] The specified network host does not have any "
-      "network addresses in the requested address family.";
-  case EAI_AGAIN:
-    return status::UnavailableErrorBuilder()
-      << "[EAI_AGAIN] The name server returned a temporary failure indication. "
-      "Try again later.";
-  case EAI_BADFLAGS:
-    return status::InvalidArgumentErrorBuilder()
-      << "[EAI_BADFLAGS] hints.ai_flags contains invalid flags; or, "
-      "hints.ai_flags included AI_CANONNAME and name was NULL.";
-  case EAI_FAIL:
-    return status::InternalErrorBuilder()
-      << "[EAI_FAIL] The name server returned a permanent failure indication.";
-  case EAI_FAMILY:
-    return status::UnimplementedErrorBuilder()
-      << "[EAI_FAMILY] The requested address family is not supported.";
-  case EAI_MEMORY:
-    return status::ResourceExhaustedErrorBuilder()
-      << "[EAI_MEMORY] Out of memory.";
-  case EAI_NODATA:
-    return status::NotFoundErrorBuilder()
-      << "[EAI_NODATA] The specified network host exists, but does not have "
-      "any network addresses defined.";
-  case EAI_NONAME:
-    return status::NotFoundErrorBuilder()
-      << "[EAI_NONAME] The node or service is not known.";
-  case EAI_SERVICE:
-    return status::NotFoundErrorBuilder()
-      << "[EAI_SERVICE] The requested service is not available for the "
-      "requested socket type.";
-  case EAI_SOCKTYPE:
-    return status::NotFoundErrorBuilder()
-      << "The requested socket type is not supported.";
-  case EAI_SYSTEM:
-    return error::ErrnoToStatus(error::Errno());
+    case EAI_ADDRFAMILY:
+      return status::InvalidArgumentErrorBuilder()
+             << "[EAI_ADDRFAMILY] The specified network host does not have any "
+                "network addresses in the requested address family.";
+    case EAI_AGAIN:
+      return status::UnavailableErrorBuilder()
+             << "[EAI_AGAIN] The name server returned a temporary failure "
+                "indication. "
+                "Try again later.";
+    case EAI_BADFLAGS:
+      return status::InvalidArgumentErrorBuilder()
+             << "[EAI_BADFLAGS] hints.ai_flags contains invalid flags; or, "
+                "hints.ai_flags included AI_CANONNAME and name was NULL.";
+    case EAI_FAIL:
+      return status::InternalErrorBuilder()
+             << "[EAI_FAIL] The name server returned a permanent failure "
+                "indication.";
+    case EAI_FAMILY:
+      return status::UnimplementedErrorBuilder()
+             << "[EAI_FAMILY] The requested address family is not supported.";
+    case EAI_MEMORY:
+      return status::ResourceExhaustedErrorBuilder()
+             << "[EAI_MEMORY] Out of memory.";
+    case EAI_NODATA:
+      return status::NotFoundErrorBuilder()
+             << "[EAI_NODATA] The specified network host exists, but does not "
+                "have "
+                "any network addresses defined.";
+    case EAI_NONAME:
+      return status::NotFoundErrorBuilder()
+             << "[EAI_NONAME] The node or service is not known.";
+    case EAI_SERVICE:
+      return status::NotFoundErrorBuilder()
+             << "[EAI_SERVICE] The requested service is not available for the "
+                "requested socket type.";
+    case EAI_SOCKTYPE:
+      return status::NotFoundErrorBuilder()
+             << "The requested socket type is not supported.";
+    case EAI_SYSTEM:
+      return error::ErrnoToStatus(error::Errno());
   }
   return status::InternalErrorBuilder() << "Unknown error during getaddrinfo.";
 }
 }  // namespace
 
-absl::StatusOr<std::shared_ptr<DnsHostInfo>>
-DnsResolver::Resolve(absl::string_view hostname) {
+absl::StatusOr<std::shared_ptr<DnsHostInfo>> DnsResolver::Resolve(
+    absl::string_view hostname) {
   auto hi = std::make_shared<DnsHostInfo>(hostname);
   struct addrinfo* result = nullptr;
   ASSIGN_OR_RETURN(auto resolve_name, hi->GetDnsResolveName(),
                    _ << "Obtaining DNS resolve name for `" << hostname << "`");
-  const int err = ::getaddrinfo(
-      resolve_name.c_str(), nullptr, nullptr, &result);
+  const int err =
+      ::getaddrinfo(resolve_name.c_str(), nullptr, nullptr, &result);
   if (err != 0) {
     return AddrInfoToStatus(err) << " DNS Resolving: `" << hostname << "`";
   }
   absl::flat_hash_set<IpAddress> ipv4, ipv6;
   for (struct addrinfo* res = result; res != nullptr; res = res->ai_next) {
     auto ss = reinterpret_cast<const struct sockaddr_storage*>(res->ai_addr);
-    if ( ss->ss_family == AF_INET ) {
+    if (ss->ss_family == AF_INET) {
       auto p = reinterpret_cast<const sockaddr_in*>(ss);
       ipv4.insert(IpAddress(ntohl(p->sin_addr.s_addr)));
-    } else if ( ss->ss_family == AF_INET6 ) {
+    } else if (ss->ss_family == AF_INET6) {
       auto p = reinterpret_cast<const sockaddr_in6*>(ss);
       ipv6.insert(IpAddress(p->sin6_addr.s6_addr));
       // reinterpret_cast<const uint8_t*>()));

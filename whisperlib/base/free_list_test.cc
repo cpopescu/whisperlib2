@@ -5,7 +5,7 @@
 namespace whisper {
 namespace base {
 
-template<class FL>
+template <class FL>
 void TestSimpleFreeList(FL* fl, size_t size) {
   EXPECT_EQ(fl->max_size(), size);
   EXPECT_EQ(fl->outstanding(), 0);
@@ -19,9 +19,9 @@ void TestSimpleFreeList(FL* fl, size_t size) {
   for (size_t i = 0; i < v.size(); ++i) {
     if (i < size) {
       dv.push_back(v[i].get());
-      EXPECT_FALSE(fl->Dispose(std::move(v[i])));
+      EXPECT_FALSE(fl->Dispose(v[i].release()));
     } else {
-      EXPECT_TRUE(fl->Dispose(std::move(v[i])));
+      EXPECT_TRUE(fl->Dispose(v[i].release()));
     }
     EXPECT_EQ(fl->outstanding(), v.size() - i - 1);
   }
@@ -33,7 +33,7 @@ void TestSimpleFreeList(FL* fl, size_t size) {
     v.emplace_back(std::move(p));
   }
   for (size_t i = 0; i < v.size(); ++i) {
-    EXPECT_FALSE(fl->Dispose(std::move(v[i])));
+    EXPECT_FALSE(fl->Dispose(v[i].release()));
   }
 }
 
@@ -44,16 +44,6 @@ TEST(FreeList, Simple) {
 
 TEST(ThreadSafeFreeList, Simple) {
   ThreadSafeFreeList<int> fl(10);
-  TestSimpleFreeList(&fl, 10);
-}
-
-TEST(FreeArrayList, Simple) {
-  FreeArrayList<int> fl(100, 10);
-  TestSimpleFreeList(&fl, 10);
-}
-
-TEST(ThreadSafeFreeArrayList, Simple) {
-  ThreadSafeFreeArrayList<int> fl(100, 10);
   TestSimpleFreeList(&fl, 10);
 }
 

@@ -18,9 +18,9 @@ cc_library(
     visibility = ["//visibility:public"],
     deps = [
         "//whisperlib/status",
-        "@com_google_absl//absl/strings",
         "@com_google_absl//absl/status",
-    ]
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 cc_library(
@@ -37,14 +37,14 @@ cc_library(
     ],
     visibility = ["//visibility:public"],
     deps = [
-        ":path",
         ":errno",
+        ":path",
         "//whisperlib/base",
         "//whisperlib/status",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:cord",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:optional",
     ],

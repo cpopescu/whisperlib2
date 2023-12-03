@@ -1,29 +1,34 @@
 #include "whisperlib/io/errno.h"
 
-#include "absl/strings/string_view.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/string_view.h"
 
 namespace whisper {
 namespace error {
 
 namespace {
 // For different is triggered by different versions of strerror_r.
-template<class T>
+template <class T>
 const char* ErrorBuffer(const char* buffer, T result);
 
-template<>
+template <>
 inline const char* ErrorBuffer<int>(const char* buffer, int result) {
-  if (!result) { return buffer; }
+  if (!result) {
+    return buffer;
+  }
   return "{No errno description found.}";
 }
-template<>
+template <>
 inline const char* ErrorBuffer<char*>(const char* buffer, char* result) {
-  if (result == nullptr) { return buffer; }
+  if (result == nullptr) {
+    return buffer;
+  }
   return "{No errno description found.}";
 }
 
-#define CASE_STR(name)                          \
-case name: return #name
+#define CASE_STR(name) \
+  case name:           \
+    return #name
 
 absl::string_view ErrnoName(int error) {
   switch (error) {
@@ -239,7 +244,9 @@ absl::string_view ErrnoName(int error) {
 }  // namespace
 
 std::string ErrnoToString(int error) {
-  char errmsg[512] = { '\0', };
+  char errmsg[512] = {
+      '\0',
+  };
   return absl::StrCat(
       "Errno: ", error, " [", ErrnoName(error), "] ",
       ErrorBuffer(errmsg, strerror_r(error, errmsg, sizeof(errmsg))), " ");
@@ -252,91 +259,91 @@ bool IsUnavailableAndShouldRetry(int error) {
 status::StatusWriter ErrnoToStatus(int error) {
   const std::string error_str(ErrnoToString(error));
   // Cover same values for this error in the switch.
-  if (error == EWOULDBLOCK) { error = EAGAIN; }
+  if (error == EWOULDBLOCK) {
+    error = EAGAIN;
+  }
 
   switch (errno) {
-  case EAGAIN:           // Resource temporarily unavailable.
-  case EADDRNOTAVAIL:    // Address not available.
-    return status::UnavailableErrorBuilder() << error_str;
-  case ECANCELED:        // Operation canceled
-    return status::CancelledErrorBuilder() << error_str;
-  case EACCES:           // Permission denied.
-  case EPERM:            // Operation not permitted.
-    return status::PermissionDeniedErrorBuilder() << error_str;
+    case EAGAIN:         // Resource temporarily unavailable.
+    case EADDRNOTAVAIL:  // Address not available.
+      return status::UnavailableErrorBuilder() << error_str;
+    case ECANCELED:  // Operation canceled
+      return status::CancelledErrorBuilder() << error_str;
+    case EACCES:  // Permission denied.
+    case EPERM:   // Operation not permitted.
+      return status::PermissionDeniedErrorBuilder() << error_str;
 #ifdef ECHRNG
-  case ECHRNG:           // Channel number out of range.
-#endif  // ECHRNG
-  case ERANGE:           // Result too large.
+    case ECHRNG:  // Channel number out of range.
+#endif            // ECHRNG
+    case ERANGE:  // Result too large.
 #ifdef ELNRANGE
-  case ELNRANGE:         // Link number out of range.
+    case ELNRANGE:  // Link number out of range.
 #endif
-    return status::OutOfRangeErrorBuilder() << error_str;
+      return status::OutOfRangeErrorBuilder() << error_str;
 #ifdef EBADE
-  case EBADE:            // Invalid exchange.
-#endif  // EBADE
-  case EBADF:            // Bad file descriptor.
+    case EBADE:  // Invalid exchange.
+#endif           // EBADE
+    case EBADF:  // Bad file descriptor.
 #ifdef EBADFD
-  case EBADFD:           // File descriptor in bad state.
+    case EBADFD:  // File descriptor in bad state.
 #endif
-  case EBADMSG:          // Bad message.
+    case EBADMSG:  // Bad message.
 #ifdef EBADR
-  case EBADR:            // Invalid request descriptor.
+    case EBADR:  // Invalid request descriptor.
 #endif
 #ifdef EBADRQC
-  case EBADRQC:          // Invalid request code.
+    case EBADRQC:  // Invalid request code.
 #endif
 #ifdef EBADSLT
-  case EBADSLT:          // Invalid slot.
+    case EBADSLT:  // Invalid slot.
 #endif
-  case EDESTADDRREQ:     // Destination address required.
-  case EDOM:             // Mathematics argument out of domain of function.
-  case EMSGSIZE:         // Message too long
-  case ENAMETOOLONG:     // Filename too long.
-  case EISDIR:           // Is a directory.
-  case EINVAL:           // Invalid argument.
+    case EDESTADDRREQ:  // Destination address required.
+    case EDOM:          // Mathematics argument out of domain of function.
+    case EMSGSIZE:      // Message too long
+    case ENAMETOOLONG:  // Filename too long.
+    case EISDIR:        // Is a directory.
+    case EINVAL:        // Invalid argument.
 #ifdef EISNAM
-  case EISNAM:           // Is a named type file.
+    case EISNAM:  // Is a named type file.
 #endif
-  case E2BIG:            // Argument list too long.
-  case EFBIG:            // File too large.
-  case ENOTSOCK:         // Not a socket.
-  case ENXIO:            // No such device or address.
-    return status::InvalidArgumentErrorBuilder() << error_str;
-  case ECONNABORTED:     // Connection aborted.
-    return status::AbortedErrorBuilder() << error_str;
-  case EADDRINUSE:       // Address already in use.
-  case EEXIST:           // File exists.
-    return status::AlreadyExistsErrorBuilder() << error_str;
-  case ENOENT:           // No such file or directory.
-  case ESRCH:            // No such process.
-    return status::NotFoundErrorBuilder() << error_str;
-  case ENFILE:           // Too many open files in system.
-  case EDQUOT:           // Disk quota exceeded.
-  case EMLINK:           // Too many links.
-  case EMFILE:           // Too many open files.
-  case ENOSPC:           // No space left on device.
-  case EUSERS:           // Too many users.
+    case E2BIG:     // Argument list too long.
+    case EFBIG:     // File too large.
+    case ENOTSOCK:  // Not a socket.
+    case ENXIO:     // No such device or address.
+      return status::InvalidArgumentErrorBuilder() << error_str;
+    case ECONNABORTED:  // Connection aborted.
+      return status::AbortedErrorBuilder() << error_str;
+    case EADDRINUSE:  // Address already in use.
+    case EEXIST:      // File exists.
+      return status::AlreadyExistsErrorBuilder() << error_str;
+    case ENOENT:  // No such file or directory.
+    case ESRCH:   // No such process.
+      return status::NotFoundErrorBuilder() << error_str;
+    case ENFILE:  // Too many open files in system.
+    case EDQUOT:  // Disk quota exceeded.
+    case EMLINK:  // Too many links.
+    case EMFILE:  // Too many open files.
+    case ENOSPC:  // No space left on device.
+    case EUSERS:  // Too many users.
 #ifdef EXFULL
-  case EXFULL:           // Exchange full.
+    case EXFULL:  // Exchange full.
 #endif
-  case ENOLCK:           // No locks available.
-  case ENOMEM:           // Not enough space/cannot allocate memory.
-    return status::ResourceExhaustedErrorBuilder() << error_str;
-  case ESOCKTNOSUPPORT:  // Socket type not supported.
-  case EAFNOSUPPORT:     // Address family not supported.
-  case ENOPROTOOPT:      // Protocol not available.
-  case ENOSYS:           // Function not implemented.
-  case ENOTSUP:          // Operation not supported.
-  case EPFNOSUPPORT:     // Protocol family not supported.
-  case EPROTONOSUPPORT:  // Protocol not supported.
-    return status::UnimplementedErrorBuilder() << error_str;
-  default:
-    return status::InternalErrorBuilder() << error_str;
+    case ENOLCK:  // No locks available.
+    case ENOMEM:  // Not enough space/cannot allocate memory.
+      return status::ResourceExhaustedErrorBuilder() << error_str;
+    case ESOCKTNOSUPPORT:  // Socket type not supported.
+    case EAFNOSUPPORT:     // Address family not supported.
+    case ENOPROTOOPT:      // Protocol not available.
+    case ENOSYS:           // Function not implemented.
+    case ENOTSUP:          // Operation not supported.
+    case EPFNOSUPPORT:     // Protocol family not supported.
+    case EPROTONOSUPPORT:  // Protocol not supported.
+      return status::UnimplementedErrorBuilder() << error_str;
+    default:
+      return status::InternalErrorBuilder() << error_str;
   }
 }
-int Errno() {
-  return errno;
-}
+int Errno() { return errno; }
 
 }  // namespace error
 }  // namespace whisper
